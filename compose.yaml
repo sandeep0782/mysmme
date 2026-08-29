@@ -3,7 +3,7 @@ services:
     build:
       context: ./frontend
       args:
-        NEXT_PUBLIC_API_URL: https://api.mysmme.com
+        NEXT_PUBLIC_API_URL: https://api.mysmme.com/api
         NEXT_PUBLIC_SITE_URL: https://mysmme.com
     container_name: mysmme-frontend
     ports:
@@ -15,7 +15,7 @@ services:
     build:
       context: ./admin
       args:
-        NEXT_PUBLIC_API_URL: https://api.mysmme.com
+        NEXT_PUBLIC_API_URL: https://api.mysmme.com/api
     container_name: mysmme-admin
     ports:
       - "4000:4000"
