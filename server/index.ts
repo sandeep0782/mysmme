@@ -32,7 +32,7 @@ dotenv.config();
 const PORT = process.env.PORT || 8000;
 
 const app = express();
-
+app.set("trust proxy", 1);
 const allowedOrigins = [process.env.FRONTEND_URL, process.env.ADMIN_URL].filter(
   Boolean,
 );
