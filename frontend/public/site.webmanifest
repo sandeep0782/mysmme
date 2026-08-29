@@ -1,0 +1,22 @@
+{
+  "name": "SareePartner",
+  "short_name": "SareePartner",
+  "description": "Shop and sell sarees online with SareePartner.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#dc2626",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/images/logo.webp",
+      "sizes": "50x50",
+      "type": "image/png"
+    },
+    {
+      "src": "/images/logo.webp",
+      "sizes": "50x50",
+      "type": "image/png"
+    }
+  ]
+}

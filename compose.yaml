@@ -1,0 +1,28 @@
+services:
+  frontend:
+    build:
+      context: ./frontend
+    container_name: mysmme-frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - server
+
+  admin:
+    build:
+      context: ./admin
+    container_name: mysmme-admin
+    ports:
+      - "4000:4000"
+    depends_on:
+      - server
+
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile.dev
+    container_name: mysmme-server
+    env_file:
+      - ./server/.env
+    ports:
+      - "8000:8000"

@@ -1,0 +1,1520 @@
+"use client";
+
+import React, { DragEvent, useRef, useState } from "react";
+import {
+  AlertCircle,
+  ArrowLeft,
+  ArrowRight,
+  CheckCircle2,
+  Download,
+  FileSpreadsheet,
+  FileWarning,
+  Loader2,
+  RefreshCw,
+  Upload,
+  X,
+} from "lucide-react";
+import { useRouter } from "next/navigation";
+import { BASE_URL } from "@/store/api";
+
+// ============================================================
+// TYPES
+// ============================================================
+
+type ValidationError = {
+  row: number;
+  field?: string;
+  value?: string | number | null;
+  message: string;
+};
+
+type ValidationWarning = {
+  row: number;
+  field?: string;
+  value?: string | number | null;
+  message: string;
+};
+
+type ValidationResult = {
+  fileId: string;
+  totalRows: number;
+  validRows: number;
+  errorRows: number;
+  warningRows: number;
+  errors: ValidationError[];
+  warnings: ValidationWarning[];
+  errorFileAvailable?: boolean;
+  errorFileName?: string;
+};
+
+type UploadedFile = {
+  fileId: string;
+  fileName: string;
+  savedPath?: string;
+};
+
+type ImportResult = {
+  imported: number;
+  failed: number;
+  message?: string;
+  fileId?: string;
+};
+
+// ============================================================
+// CONSTANTS
+// ============================================================
+
+const ALLOWED_EXTENSION = ".xlsx";
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
+
+// ============================================================
+// ERROR HELPERS
+// ============================================================
+
+const getErrorMessage = (
+  error: unknown,
+  fallback = "Something went wrong.",
+): string => {
+  if (!error) {
+    return fallback;
+  }
+
+  if (error instanceof Error) {
+    return error.message || fallback;
+  }
+
+  if (typeof error === "string") {
+    return error || fallback;
+  }
+
+  if (typeof error === "object") {
+    const err = error as Record<string, unknown>;
+
+    if ("data" in err) {
+      const data = err.data;
+
+      if (typeof data === "string" && data.trim()) {
+        return data;
+      }
+
+      if (data && typeof data === "object") {
+        const dataObject = data as Record<string, unknown>;
+
+        if (
+          typeof dataObject.message === "string" &&
+          dataObject.message.trim()
+        ) {
+          return dataObject.message;
+        }
+
+        if (typeof dataObject.error === "string" && dataObject.error.trim()) {
+          return dataObject.error;
+        }
+
+        if (typeof dataObject.detail === "string" && dataObject.detail.trim()) {
+          return dataObject.detail;
+        }
+
+        if (typeof dataObject.errors === "string" && dataObject.errors.trim()) {
+          return dataObject.errors;
+        }
+
+        if (Array.isArray(dataObject.errors)) {
+          return dataObject.errors
+            .map((item) => {
+              if (typeof item === "string") {
+                return item;
+              }
+
+              if (item && typeof item === "object") {
+                const itemObject = item as Record<string, unknown>;
+
+                return (
+                  String(itemObject.message || "") ||
+                  String(itemObject.error || "")
+                );
+              }
+
+              return String(item);
+            })
+            .filter(Boolean)
+            .join(", ");
+        }
+
+        try {
+          const json = JSON.stringify(dataObject);
+
+          if (json && json !== "{}") {
+            return json;
+          }
+        } catch {
+          // Ignore
+        }
+      }
+    }
+
+    if ("status" in err) {
+      const status = err.status;
+
+      if (typeof status === "number") {
+        switch (status) {
+          case 400:
+            return "Invalid Excel upload request. Please check the file and try again.";
+
+          case 401:
+            return "You are not authenticated. Please login again.";
+
+          case 403:
+            return "You do not have permission to upload products.";
+
+          case 404:
+            return "Product import API endpoint was not found.";
+
+          case 413:
+            return "The Excel file is too large.";
+
+          case 415:
+            return "Unsupported file type. Please upload an .xlsx file.";
+
+          case 422:
+            return "The Excel file could not be processed. Please check the template.";
+
+          case 500:
+            return "Server error while processing the Excel file.";
+
+          case 502:
+          case 503:
+          case 504:
+            return "The server is temporarily unavailable. Please try again.";
+
+          default:
+            return `Upload failed with HTTP status ${status}.`;
+        }
+      }
+    }
+
+    if (typeof err.message === "string" && err.message.trim()) {
+      return err.message;
+    }
+
+    if (typeof err.error === "string" && err.error.trim()) {
+      return err.error;
+    }
+
+    try {
+      const json = JSON.stringify(err);
+
+      if (json && json !== "{}") {
+        return json;
+      }
+    } catch {
+      // Ignore
+    }
+  }
+
+  return fallback;
+};
+
+// ============================================================
+// PAGE
+// ============================================================
+
+const Page = () => {
+  const router = useRouter();
+
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // ==========================================================
+  // STATE
+  // ==========================================================
+
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
+  const [uploadedFile, setUploadedFile] = useState<UploadedFile | null>(null);
+
+  const [isDragging, setIsDragging] = useState(false);
+
+  const [isDownloadingTemplate, setIsDownloadingTemplate] = useState(false);
+
+  const [isDownloadingErrorFile, setIsDownloadingErrorFile] = useState(false);
+
+  const [isImporting, setIsImporting] = useState(false);
+
+  const [validationResult, setValidationResult] =
+    useState<ValidationResult | null>(null);
+
+  const [importResult, setImportResult] = useState<ImportResult | null>(null);
+
+  const [errorMessage, setErrorMessage] = useState("");
+
+  const [successMessage, setSuccessMessage] = useState("");
+
+  // ==========================================================
+  // API
+  // ==========================================================
+
+  const [uploadProductExcel, { isLoading: isUploading }] =
+    useUploadProductExcelMutation();
+
+  // ==========================================================
+  // RESET
+  // ==========================================================
+
+  const resetMessages = () => {
+    setErrorMessage("");
+    setSuccessMessage("");
+  };
+
+  const resetValidation = () => {
+    setValidationResult(null);
+    setImportResult(null);
+  };
+
+  // ==========================================================
+  // FILE VALIDATION
+  // ==========================================================
+
+  const validateFile = (file: File): boolean => {
+    resetMessages();
+    resetValidation();
+
+    const extension = file.name
+      .substring(file.name.lastIndexOf("."))
+      .toLowerCase();
+
+    if (extension !== ALLOWED_EXTENSION) {
+      setErrorMessage("Please upload an Excel .xlsx file.");
+      return false;
+    }
+
+    if (file.size > MAX_FILE_SIZE) {
+      setErrorMessage("File size cannot exceed 10MB.");
+      return false;
+    }
+
+    if (file.size === 0) {
+      setErrorMessage("The selected file is empty.");
+      return false;
+    }
+
+    return true;
+  };
+
+  // ==========================================================
+  // SELECT FILE
+  // ==========================================================
+
+  const selectFile = (file: File | undefined) => {
+    if (!file) {
+      return;
+    }
+
+    if (!validateFile(file)) {
+      return;
+    }
+
+    setSelectedFile(file);
+    setUploadedFile(null);
+    setValidationResult(null);
+    setImportResult(null);
+    setErrorMessage("");
+    setSuccessMessage("");
+  };
+
+  // ==========================================================
+  // INPUT
+  // ==========================================================
+
+  const handleFileInput = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+
+    selectFile(file);
+
+    event.target.value = "";
+  };
+
+  // ==========================================================
+  // DRAG
+  // ==========================================================
+
+  const handleDragOver = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    setIsDragging(false);
+  };
+
+  const handleDrop = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    setIsDragging(false);
+
+    const file = event.dataTransfer.files?.[0];
+
+    selectFile(file);
+  };
+
+  // ==========================================================
+  // REMOVE
+  // ==========================================================
+
+  const removeFile = () => {
+    setSelectedFile(null);
+    setUploadedFile(null);
+
+    resetMessages();
+    resetValidation();
+  };
+
+  // ==========================================================
+  // DOWNLOAD TEMPLATE
+  // ==========================================================
+
+  const handleDownloadTemplate = async () => {
+    try {
+      setIsDownloadingTemplate(true);
+      setErrorMessage("");
+
+      const response = await fetch(`${BASE_URL}/admin/templates/product`, {
+        method: "GET",
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        let message = "Failed to download template.";
+
+        try {
+          const data = await response.json();
+
+          message = data?.message || data?.error || message;
+        } catch {
+          // Ignore
+        }
+
+        throw new Error(message);
+      }
+
+      const blob = await response.blob();
+
+      const downloadUrl = window.URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+
+      link.href = downloadUrl;
+      link.download = "saree-product-import-template.xlsx";
+
+      document.body.appendChild(link);
+
+      link.click();
+
+      link.remove();
+
+      window.URL.revokeObjectURL(downloadUrl);
+    } catch (error) {
+      setErrorMessage(
+        getErrorMessage(
+          error,
+          "Failed to download template. Please try again.",
+        ),
+      );
+    } finally {
+      setIsDownloadingTemplate(false);
+    }
+  };
+
+  // ==========================================================
+  // UPLOAD + VALIDATION
+  // ==========================================================
+
+  // ==========================================================
+  // UPLOAD + VALIDATION
+  // ==========================================================
+
+  const handleUpload = async () => {
+    resetMessages();
+    resetValidation();
+
+    if (!selectedFile) {
+      setErrorMessage("Please select an Excel file first.");
+      return;
+    }
+
+    try {
+      const formData = new FormData();
+
+      formData.append("file", selectedFile);
+
+      const response = await uploadProductExcel(formData);
+
+      if ("error" in response) {
+        setErrorMessage(
+          getErrorMessage(response.error, "Excel upload failed."),
+        );
+        return;
+      }
+
+      const result = response.data as any;
+
+      if (!result) {
+        setErrorMessage("Server returned an empty response.");
+        return;
+      }
+
+      const payload =
+        result?.data && typeof result.data === "object" ? result.data : result;
+
+      if (!payload.fileId) {
+        setErrorMessage(
+          payload?.message ||
+            "Upload succeeded but the server did not return a file ID.",
+        );
+        return;
+      }
+
+      setUploadedFile({
+        fileId: String(payload.fileId),
+        fileName: payload.fileName || selectedFile.name,
+        savedPath: payload.savedPath,
+      });
+
+      const normalized: ValidationResult = {
+        fileId: String(payload.fileId),
+        totalRows: Number(payload.totalRows ?? 0),
+        validRows: Number(payload.validRows ?? 0),
+        errorRows: Number(payload.errorRows ?? 0),
+        warningRows: Number(payload.warningRows ?? 0),
+        errors: Array.isArray(payload.errors) ? payload.errors : [],
+        warnings: Array.isArray(payload.warnings) ? payload.warnings : [],
+        errorFileAvailable: Boolean(payload.errorFileAvailable),
+        errorFileName: payload.errorFileName,
+      };
+
+      setValidationResult(normalized);
+
+      if (normalized.errorRows > 0) {
+        setErrorMessage(
+          `Automatic validation found ${normalized.errorRows} ${
+            normalized.errorRows === 1 ? "error" : "errors"
+          }. Download the error Excel, fix the rows and upload again.`,
+        );
+        return;
+      }
+
+      if (normalized.validRows === 0) {
+        setErrorMessage(
+          "Excel was uploaded and validated, but there are no valid products to import.",
+        );
+        return;
+      }
+
+      setSuccessMessage(
+        `Excel uploaded and validated successfully. ${normalized.validRows} products are ready to import.`,
+      );
+    } catch (error) {
+      setErrorMessage(getErrorMessage(error, "Unable to upload Excel file."));
+    }
+  };
+
+  // ==========================================================
+  // DOWNLOAD ERROR FILE
+  // ==========================================================
+
+  const handleDownloadErrorFile = async () => {
+    resetMessages();
+
+    if (!uploadedFile) {
+      setErrorMessage("No uploaded Excel file is available.");
+      return;
+    }
+
+    try {
+      setIsDownloadingErrorFile(true);
+
+      const response = await fetch(
+        `${BASE_URL}/products/import/${encodeURIComponent(
+          uploadedFile.fileId,
+        )}/errors`,
+        {
+          method: "GET",
+          credentials: "include",
+        },
+      );
+
+      if (!response.ok) {
+        let message = "Unable to download error Excel.";
+
+        try {
+          const result = await response.json();
+
+          message = result?.message || result?.error || message;
+        } catch {
+          // Ignore
+        }
+
+        throw new Error(message);
+      }
+
+      const blob = await response.blob();
+
+      const downloadUrl = window.URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+
+      link.href = downloadUrl;
+
+      link.download =
+        validationResult?.errorFileName || "products-import-errors.xlsx";
+
+      document.body.appendChild(link);
+
+      link.click();
+
+      link.remove();
+
+      window.URL.revokeObjectURL(downloadUrl);
+    } catch (error) {
+      setErrorMessage(
+        getErrorMessage(error, "Unable to download error Excel."),
+      );
+    } finally {
+      setIsDownloadingErrorFile(false);
+    }
+  };
+
+  // ==========================================================
+  // IMPORT
+  // ==========================================================
+
+  const handleImport = async () => {
+    resetMessages();
+
+    if (!uploadedFile) {
+      setErrorMessage("Please upload an Excel file first.");
+      return;
+    }
+
+    if (!validationResult) {
+      setErrorMessage(
+        "The Excel file has not been automatically validated yet.",
+      );
+      return;
+    }
+
+    if (validationResult.errorRows > 0) {
+      setErrorMessage(
+        "The spreadsheet contains validation errors. Fix them before importing.",
+      );
+      return;
+    }
+
+    if (validationResult.validRows <= 0) {
+      setErrorMessage("There are no valid products to import.");
+      return;
+    }
+
+    try {
+      setIsImporting(true);
+
+      const response = await importProducts({
+        fileId: uploadedFile.fileId,
+      });
+
+      if ("error" in response) {
+        setErrorMessage(
+          getErrorMessage(response.error, "Product import failed."),
+        );
+
+        return;
+      }
+
+      const rawResult = response.data as any;
+
+      const result =
+        rawResult?.data && typeof rawResult.data === "object"
+          ? rawResult.data
+          : rawResult;
+
+      const imported = Number(result?.imported ?? 0);
+
+      const failed = Number(result?.failed ?? 0);
+
+      setImportResult({
+        imported,
+        failed,
+        message: result?.message,
+        fileId: uploadedFile.fileId,
+      });
+
+      setSuccessMessage(
+        result?.message ||
+          `${imported} product${
+            imported === 1 ? "" : "s"
+          } imported successfully.`,
+      );
+    } catch (error) {
+      setErrorMessage(getErrorMessage(error, "Unable to import products."));
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
+  // ==========================================================
+  // FILE SIZE
+  // ==========================================================
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) {
+      return `${bytes} B`;
+    }
+
+    if (bytes < 1024 * 1024) {
+      return `${(bytes / 1024).toFixed(1)} KB`;
+    }
+
+    return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+  };
+
+  // ==========================================================
+  // STATUS
+  // ==========================================================
+
+  const isReadyToImport =
+    !!validationResult &&
+    validationResult.errorRows === 0 &&
+    validationResult.validRows > 0;
+
+  // ==========================================================
+  // RENDER
+  // ==========================================================
+
+  return (
+    <div className="min-h-screen bg-slate-50">
+      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+        {/* HEADER */}
+
+        <div className="mb-8">
+          <button
+            type="button"
+            onClick={() => router.push("/platform/admin/catalogue")}
+            className="mb-5 inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-slate-500 transition hover:text-slate-900"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to Catalogue
+          </button>
+
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <div className="mb-2 flex items-center gap-2">
+                <div className="h-2 w-2 rounded-full bg-red-600" />
+
+                <span className="text-sm font-semibold uppercase tracking-wider text-red-600">
+                  Saree Catalogue
+                </span>
+              </div>
+
+              <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
+                Import Saree Products
+              </h1>
+
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500 sm:text-base">
+                Download the template, fill your product data and upload the
+                Excel. The system automatically saves and validates the file
+                before allowing import.
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <button
+                type="button"
+                onClick={handleDownloadTemplate}
+                disabled={isDownloadingTemplate}
+                className="inline-flex h-11 cursor-pointer items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isDownloadingTemplate ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Download className="h-4 w-4" />
+                )}
+
+                {isDownloadingTemplate ? "Downloading..." : "Download Template"}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => router.push("/platform/admin/catalogue/add")}
+                className="inline-flex h-11 cursor-pointer items-center justify-center gap-2 rounded-lg bg-red-600 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-red-700"
+              >
+                <ArrowRight className="h-4 w-4" />
+                Manual Add
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* SUCCESS */}
+
+        {successMessage && (
+          <div className="mb-6 flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-4">
+            <CheckCircle2 className="mt-0.5 h-5 w-5 flex-shrink-0 text-emerald-600" />
+
+            <p className="text-sm font-semibold text-emerald-700">
+              {successMessage}
+            </p>
+          </div>
+        )}
+
+        {/* ERROR */}
+
+        {errorMessage && (
+          <div className="mb-6 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-4">
+            <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-red-600" />
+
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-red-700">
+                {errorMessage}
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setErrorMessage("")}
+              className="text-red-400 transition hover:text-red-700"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+
+        {/* WORKFLOW */}
+
+        <section className="mb-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div className="grid grid-cols-1 divide-y divide-slate-100 md:grid-cols-3 md:divide-x md:divide-y-0">
+            <div className="flex gap-4 px-6 py-5">
+              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-red-50 text-sm font-bold text-red-600">
+                1
+              </div>
+
+              <div>
+                <p className="text-sm font-bold text-slate-900">
+                  Download Template
+                </p>
+
+                <p className="mt-1 text-xs leading-5 text-slate-500">
+                  Download the official Excel structure.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-4 px-6 py-5">
+              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-blue-50 text-sm font-bold text-blue-600">
+                2
+              </div>
+
+              <div>
+                <p className="text-sm font-bold text-slate-900">
+                  Fill & Upload Excel
+                </p>
+
+                <p className="mt-1 text-xs leading-5 text-slate-500">
+                  Fill your product data and upload the completed file.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-4 px-6 py-5">
+              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-emerald-50 text-sm font-bold text-emerald-600">
+                3
+              </div>
+
+              <div>
+                <p className="text-sm font-bold text-slate-900">
+                  Automatic Validation
+                </p>
+
+                <p className="mt-1 text-xs leading-5 text-slate-500">
+                  Validation runs automatically after upload.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* MAIN */}
+
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+          {/* UPLOAD */}
+
+          <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm xl:col-span-2">
+            <div className="border-b border-slate-200 px-6 py-5">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+                  <FileSpreadsheet className="h-5 w-5" />
+                </div>
+
+                <div>
+                  <h2 className="font-bold text-slate-900">
+                    Upload Excel Spreadsheet
+                  </h2>
+
+                  <p className="text-sm text-slate-500">
+                    Uploading automatically saves and validates the Excel.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="px-6 py-6">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                onChange={handleFileInput}
+                className="hidden"
+              />
+
+              {!selectedFile ? (
+                <div
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  onClick={() => fileInputRef.current?.click()}
+                  className={`group flex min-h-[320px] cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed px-6 py-12 text-center transition ${
+                    isDragging
+                      ? "border-red-500 bg-red-50"
+                      : "border-slate-300 bg-slate-50 hover:border-red-400 hover:bg-red-50/40"
+                  }`}
+                >
+                  <div
+                    className={`flex h-16 w-16 items-center justify-center rounded-2xl transition ${
+                      isDragging
+                        ? "bg-red-100 text-red-600"
+                        : "bg-white text-slate-400 shadow-sm group-hover:bg-red-50 group-hover:text-red-500"
+                    }`}
+                  >
+                    <Upload className="h-7 w-7" />
+                  </div>
+
+                  <h3 className="mt-5 text-base font-bold text-slate-900">
+                    {isDragging
+                      ? "Drop your Excel file here"
+                      : "Drag & drop your Excel file"}
+                  </h3>
+
+                  <p className="mt-2 text-sm text-slate-500">
+                    or click anywhere to browse from your computer
+                  </p>
+
+                  <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
+                    <span className="rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 shadow-sm">
+                      .XLSX
+                    </span>
+
+                    <span className="rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 shadow-sm">
+                      Max 10MB
+                    </span>
+
+                    <span className="rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 shadow-sm">
+                      Auto Validation
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-5">
+                  <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
+                    <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600">
+                      <FileSpreadsheet className="h-7 w-7" />
+                    </div>
+
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-bold text-slate-900">
+                        {selectedFile.name}
+                      </p>
+
+                      <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                        <span>{formatFileSize(selectedFile.size)}</span>
+
+                        <span>•</span>
+
+                        <span>Excel Spreadsheet</span>
+
+                        <span>•</span>
+
+                        {uploadedFile ? (
+                          <span className="font-semibold text-emerald-600">
+                            Saved & Validated
+                          </span>
+                        ) : (
+                          <span className="font-semibold text-amber-600">
+                            Ready to Upload
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={removeFile}
+                      disabled={isUploading || importing}
+                      className="inline-flex h-9 w-9 flex-shrink-0 cursor-pointer items-center justify-center rounded-lg bg-white text-slate-400 shadow-sm transition hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+
+                  <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isUploading || importing}
+                      className="inline-flex h-11 cursor-pointer items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <RefreshCw className="h-4 w-4" />
+                      Replace File
+                    </button>
+
+                    {!uploadedFile ? (
+                      <button
+                        type="button"
+                        onClick={handleUpload}
+                        disabled={isUploading}
+                        className="inline-flex h-11 flex-1 cursor-pointer items-center justify-center gap-2 rounded-lg bg-red-600 px-5 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {isUploading ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Uploading & Validating...
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="h-4 w-4" />
+                            Upload & Validate
+                          </>
+                        )}
+                      </button>
+                    ) : validationResult?.errorRows ? (
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={importing}
+                        className="inline-flex h-11 flex-1 cursor-pointer items-center justify-center gap-2 rounded-lg bg-red-600 px-5 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        <RefreshCw className="h-4 w-4" />
+                        Upload Corrected Excel
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={handleImport}
+                        disabled={!isReadyToImport || importing}
+                        className="inline-flex h-11 flex-1 cursor-pointer items-center justify-center gap-2 rounded-lg bg-emerald-600 px-5 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {importing ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Importing Products...
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="h-4 w-4" />
+                            Import{" "}
+                            {validationResult?.validRows
+                              ? `${validationResult.validRows} Products`
+                              : "Products"}
+                          </>
+                        )}
+                      </button>
+                    )}
+                  </div>
+
+                  {uploadedFile && (
+                    <div className="mt-4 rounded-xl border border-emerald-200 bg-white px-4 py-3">
+                      <div className="flex items-center gap-3">
+                        <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+
+                        <div>
+                          <p className="text-xs font-bold text-emerald-800">
+                            Excel saved and automatically validated
+                          </p>
+
+                          <p className="mt-1 text-xs text-slate-500">
+                            File ID: {uploadedFile.fileId}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="mt-5 rounded-xl border border-blue-100 bg-blue-50 p-4">
+                <div className="flex gap-3">
+                  <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-blue-600" />
+
+                  <div>
+                    <p className="text-xs font-bold text-blue-800">
+                      Import process
+                    </p>
+
+                    <ul className="mt-2 space-y-1 text-xs leading-5 text-blue-700">
+                      <li>• Download the latest template.</li>
+                      <li>• Fill the product information.</li>
+                      <li>• Save the Excel file.</li>
+                      <li>
+                        • Upload the Excel — validation runs automatically.
+                      </li>
+                      <li>• Fix errors if they are found.</li>
+                      <li>• Import when validation passes.</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* SIDEBAR */}
+
+          <div className="space-y-6">
+            <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+              <div className="border-b border-slate-200 px-5 py-5">
+                <h2 className="font-bold text-slate-900">Need the template?</h2>
+
+                <p className="mt-1 text-xs leading-5 text-slate-500">
+                  Download the official import template before entering your
+                  products.
+                </p>
+              </div>
+
+              <div className="p-5">
+                <button
+                  type="button"
+                  onClick={handleDownloadTemplate}
+                  disabled={isDownloadingTemplate}
+                  className="flex h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 text-sm font-semibold text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isDownloadingTemplate ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Download className="h-4 w-4" />
+                  )}
+                  Download Excel Template
+                </button>
+              </div>
+            </section>
+
+            <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+              <div className="border-b border-slate-200 px-5 py-5">
+                <h2 className="font-bold text-slate-900">Import Guidelines</h2>
+              </div>
+
+              <div className="space-y-4 px-5 py-5">
+                {[
+                  "Required fields must be completed.",
+                  "Prices and quantities must contain valid numbers.",
+                  "Catalogue references must exist in the system.",
+                  "Products are automatically validated after upload.",
+                  "Uploaded Excel files are retained for import tracking.",
+                ].map((text) => (
+                  <div key={text} className="flex gap-3">
+                    <CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-emerald-500" />
+
+                    <p className="text-xs leading-5 text-slate-600">{text}</p>
+                  </div>
+                ))}
+              </div>
+            </section>
+          </div>
+        </div>
+
+        {/* VALIDATION SUMMARY */}
+
+        {validationResult && (
+          <section className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <div className="border-b border-slate-200 px-6 py-5">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h2 className="font-bold text-slate-900">
+                    Automatic Validation Summary
+                  </h2>
+
+                  <p className="mt-1 text-sm text-slate-500">
+                    The spreadsheet was automatically validated after upload.
+                  </p>
+                </div>
+
+                {validationResult.errorRows === 0 ? (
+                  <div className="inline-flex items-center gap-2 self-start rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700">
+                    <CheckCircle2 className="h-4 w-4" />
+                    Validation Passed
+                  </div>
+                ) : (
+                  <div className="inline-flex items-center gap-2 self-start rounded-full bg-red-50 px-3 py-1.5 text-xs font-bold text-red-700">
+                    <FileWarning className="h-4 w-4" />
+                    Fix Errors First
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 divide-x divide-y divide-slate-100 md:grid-cols-4 md:divide-y-0">
+              <div className="px-6 py-6">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                  Total Rows
+                </p>
+
+                <p className="mt-2 text-3xl font-bold text-slate-900">
+                  {validationResult.totalRows}
+                </p>
+              </div>
+
+              <div className="px-6 py-6">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                  Valid Rows
+                </p>
+
+                <p className="mt-2 text-3xl font-bold text-emerald-600">
+                  {validationResult.validRows}
+                </p>
+              </div>
+
+              <div className="px-6 py-6">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                  Errors
+                </p>
+
+                <p className="mt-2 text-3xl font-bold text-red-600">
+                  {validationResult.errorRows}
+                </p>
+              </div>
+
+              <div className="px-6 py-6">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                  Warnings
+                </p>
+
+                <p className="mt-2 text-3xl font-bold text-amber-500">
+                  {validationResult.warningRows}
+                </p>
+              </div>
+            </div>
+
+            {validationResult.errorRows > 0 && (
+              <div className="border-t border-red-100 bg-red-50 px-6 py-5">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-sm font-bold text-red-900">
+                      Error Excel generated
+                    </p>
+
+                    <p className="mt-1 text-xs leading-5 text-red-700">
+                      Download the error workbook, correct the highlighted rows
+                      and upload the corrected Excel.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleDownloadErrorFile}
+                    disabled={
+                      isDownloadingErrorFile ||
+                      !validationResult.errorFileAvailable
+                    }
+                    className="inline-flex h-11 cursor-pointer items-center justify-center gap-2 rounded-lg bg-red-600 px-5 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {isDownloadingErrorFile ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Download className="h-4 w-4" />
+                    )}
+                    Download Error Excel
+                  </button>
+                </div>
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* VALIDATION ERRORS */}
+
+        {validationResult && validationResult.errors.length > 0 && (
+          <section className="mt-6 overflow-hidden rounded-2xl border border-red-200 bg-white shadow-sm">
+            <div className="border-b border-red-100 bg-red-50 px-6 py-5">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-100 text-red-600">
+                  <FileWarning className="h-5 w-5" />
+                </div>
+
+                <div>
+                  <h2 className="font-bold text-red-900">Validation Errors</h2>
+
+                  <p className="text-sm text-red-700">
+                    These errors were detected automatically during upload.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[700px] text-left">
+                <thead className="border-b border-slate-200 bg-slate-50">
+                  <tr>
+                    <th className="px-6 py-3 text-xs font-bold uppercase tracking-wide text-slate-500">
+                      Row
+                    </th>
+
+                    <th className="px-6 py-3 text-xs font-bold uppercase tracking-wide text-slate-500">
+                      Field
+                    </th>
+
+                    <th className="px-6 py-3 text-xs font-bold uppercase tracking-wide text-slate-500">
+                      Value
+                    </th>
+
+                    <th className="px-6 py-3 text-xs font-bold uppercase tracking-wide text-slate-500">
+                      Problem
+                    </th>
+                  </tr>
+                </thead>
+
+                <tbody className="divide-y divide-slate-100">
+                  {validationResult.errors.map((error, index) => (
+                    <tr
+                      key={`${error.row}-${error.field}-${index}`}
+                      className="transition hover:bg-red-50/30"
+                    >
+                      <td className="px-6 py-4 text-sm font-bold text-slate-900">
+                        {error.row}
+                      </td>
+
+                      <td className="px-6 py-4 text-sm font-medium text-slate-700">
+                        {error.field || "—"}
+                      </td>
+
+                      <td className="max-w-[220px] truncate px-6 py-4 text-sm text-slate-500">
+                        {error.value === null ||
+                        error.value === undefined ||
+                        error.value === ""
+                          ? "—"
+                          : String(error.value)}
+                      </td>
+
+                      <td className="px-6 py-4 text-sm font-medium text-red-600">
+                        {error.message}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )}
+
+        {/* WARNINGS */}
+
+        {validationResult &&
+          validationResult.errors.length === 0 &&
+          validationResult.warnings.length > 0 && (
+            <section className="mt-6 overflow-hidden rounded-2xl border border-amber-200 bg-white shadow-sm">
+              <div className="border-b border-amber-100 bg-amber-50 px-6 py-5">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-100 text-amber-600">
+                    <AlertCircle className="h-5 w-5" />
+                  </div>
+
+                  <div>
+                    <h2 className="font-bold text-amber-900">Warnings</h2>
+
+                    <p className="text-sm text-amber-700">
+                      These warnings do not prevent import.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[650px] text-left">
+                  <thead className="border-b border-slate-200 bg-slate-50">
+                    <tr>
+                      <th className="px-6 py-3 text-xs font-bold uppercase tracking-wide text-slate-500">
+                        Row
+                      </th>
+
+                      <th className="px-6 py-3 text-xs font-bold uppercase tracking-wide text-slate-500">
+                        Field
+                      </th>
+
+                      <th className="px-6 py-3 text-xs font-bold uppercase tracking-wide text-slate-500">
+                        Warning
+                      </th>
+                    </tr>
+                  </thead>
+
+                  <tbody className="divide-y divide-slate-100">
+                    {validationResult.warnings.map((warning, index) => (
+                      <tr key={`${warning.row}-${warning.field}-${index}`}>
+                        <td className="px-6 py-4 text-sm font-bold text-slate-900">
+                          {warning.row}
+                        </td>
+
+                        <td className="px-6 py-4 text-sm text-slate-700">
+                          {warning.field || "—"}
+                        </td>
+
+                        <td className="px-6 py-4 text-sm text-amber-700">
+                          {warning.message}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          )}
+
+        {/* IMPORT RESULT */}
+
+        {importResult && (
+          <section className="mt-6 overflow-hidden rounded-2xl border border-emerald-200 bg-white shadow-sm">
+            <div className="bg-emerald-50 px-6 py-8 text-center">
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+                <CheckCircle2 className="h-7 w-7" />
+              </div>
+
+              <h2 className="mt-4 text-xl font-bold text-emerald-900">
+                Import Completed
+              </h2>
+
+              <p className="mt-2 text-sm text-emerald-700">
+                Your validated product spreadsheet has been processed
+                successfully.
+              </p>
+
+              <div className="mx-auto mt-6 grid max-w-md grid-cols-2 gap-4">
+                <div className="rounded-xl bg-white px-5 py-4 shadow-sm">
+                  <p className="text-xs font-semibold uppercase text-slate-400">
+                    Imported
+                  </p>
+
+                  <p className="mt-1 text-2xl font-bold text-emerald-600">
+                    {importResult.imported}
+                  </p>
+                </div>
+
+                <div className="rounded-xl bg-white px-5 py-4 shadow-sm">
+                  <p className="text-xs font-semibold uppercase text-slate-400">
+                    Failed
+                  </p>
+
+                  <p className="mt-1 text-2xl font-bold text-red-600">
+                    {importResult.failed}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* STICKY ACTIONS */}
+
+        <div className="sticky bottom-0 z-20 mt-6 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-lg backdrop-blur sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            {!uploadedFile ? (
+              <p className="text-xs text-slate-500">
+                Select your completed Excel and upload it. Validation will run
+                automatically.
+              </p>
+            ) : !validationResult ? (
+              <p className="text-xs text-slate-500">
+                Upload and automatic validation is in progress.
+              </p>
+            ) : validationResult.errorRows > 0 ? (
+              <p className="text-xs text-red-600">
+                Fix the errors using the generated error Excel and upload the
+                corrected file.
+              </p>
+            ) : (
+              <p className="text-xs text-emerald-600">
+                {validationResult.validRows} product
+                {validationResult.validRows === 1 ? "" : "s"} ready for import.
+              </p>
+            )}
+          </div>
+
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <button
+              type="button"
+              disabled={importing || isUploading}
+              onClick={() => router.push("/platform/admin/catalogue")}
+              className="inline-flex h-11 cursor-pointer items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <X className="h-4 w-4" />
+              Cancel
+            </button>
+
+            {!uploadedFile ? (
+              <button
+                type="button"
+                onClick={handleUpload}
+                disabled={!selectedFile || isUploading}
+                className="inline-flex h-11 cursor-pointer items-center justify-center gap-2 rounded-lg bg-red-600 px-6 text-sm font-semibold text-white shadow-sm transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isUploading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Uploading & Validating...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="h-4 w-4" />
+                    Upload & Validate
+                  </>
+                )}
+              </button>
+            ) : validationResult?.errorRows ? (
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={importing}
+                className="inline-flex h-11 cursor-pointer items-center justify-center gap-2 rounded-lg bg-red-600 px-6 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <RefreshCw className="h-4 w-4" />
+                Upload Corrected Excel
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleImport}
+                disabled={!isReadyToImport || importing}
+                className="inline-flex h-11 cursor-pointer items-center justify-center gap-2 rounded-lg bg-emerald-600 px-6 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {importing ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Importing Products...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="h-4 w-4" />
+                    Import{" "}
+                    {validationResult?.validRows
+                      ? `${validationResult.validRows} Products`
+                      : "Products"}
+                  </>
+                )}
+              </button>
+            )}
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+};
+
+export default Page;
