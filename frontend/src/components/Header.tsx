@@ -295,7 +295,7 @@ export default function Header() {
             )}
           </Link>
           <Link
-            href="/wishlist"
+            href="/account/wishlist"
             className="relative inline-flex items-center gap-2 rounded-xs px-4 py-2 text-sm font-medium hover:bg-gray-100"
           >
             <Heart className="h-5 w-5" aria-hidden="true" />

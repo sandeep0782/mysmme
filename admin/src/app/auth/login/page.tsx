@@ -47,20 +47,24 @@ export default function LoginPage() {
         toast.success("Login Successful");
 
         if (role === "admin" || role === "super-admin") {
-          window.location.href = "/platform/admin";
+          window.location.href = `${process.env.NEXT_PUBLIC_ADMIN_URL}/platform/admin`;
           return;
         }
 
         if (role === "seller") {
-          window.location.href = "/platform/seller";
+          window.location.href = `${process.env.NEXT_PUBLIC_ADMIN_URL}/platform/seller`;
           return;
         }
 
         if (role === "freelancer") {
-          window.location.href = "/platform/freelancer";
+          window.location.href = `${process.env.NEXT_PUBLIC_ADMIN_URL}/platform/freelancer`;
           return;
         }
       }
+      console.log("LOGIN RESULT:", result);
+
+      const role = result.data.user.role;
+      console.log("LOGIN ROLE:", role);
     } catch (error: any) {
       console.log("LOGIN ERROR:", error);
 

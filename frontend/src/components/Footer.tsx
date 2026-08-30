@@ -1,4 +1,3 @@
-
 import Link from "next/link";
 import type { ReactNode } from "react";
 
@@ -6,14 +5,12 @@ export default function Footer() {
   return (
     <footer className="border-t border-gray-200 bg-[#0b0b0b] text-gray-400">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-
         {/* ============================================================
                     TOP CTA
                 ============================================================ */}
 
         <div className="border-b border-white/10 py-10 sm:py-12">
           <div className="flex flex-col gap-7 lg:flex-row lg:items-center lg:justify-between">
-
             <div className="max-w-2xl">
               <div className="mb-3 flex items-center gap-2">
                 <span className="h-2 w-2 rounded-full bg-red-500" />
@@ -29,14 +26,14 @@ export default function Footer() {
               </h2>
 
               <p className="mt-3 max-w-xl text-sm leading-6 text-gray-500 sm:text-base">
-                Manage your products, orders and customers from
-                one simple marketplace platform.
+                Manage your products, orders and customers from one simple
+                marketplace platform.
               </p>
             </div>
 
             <div className="flex shrink-0 flex-col gap-3 sm:flex-row">
               <Link
-                href="/auth/register"
+                href="https://admin.mysmme.com/auth/register"
                 className="inline-flex h-11 items-center justify-center rounded-xl bg-red-600 px-6 text-sm font-semibold text-white shadow-lg shadow-red-600/10 transition hover:bg-red-700 hover:shadow-red-600/20"
               >
                 Start Selling
@@ -49,25 +46,18 @@ export default function Footer() {
                 Explore Marketplace
               </Link>
             </div>
-
           </div>
         </div>
-
 
         {/* ============================================================
                     MAIN FOOTER
                 ============================================================ */}
 
         <div className="grid gap-10 py-12 sm:grid-cols-2 lg:grid-cols-12 lg:gap-8">
-
           {/* BRAND */}
 
           <div className="sm:col-span-2 lg:col-span-4">
-
-            <Link
-              href="/"
-              className="group inline-flex items-center gap-3"
-            >
+            <Link href="/" className="group inline-flex items-center gap-3">
               <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-red-600 text-lg font-black text-white shadow-lg shadow-red-600/20 transition group-hover:scale-105">
                 M
               </div>
@@ -84,9 +74,8 @@ export default function Footer() {
             </Link>
 
             <p className="mt-5 max-w-sm text-sm leading-6 text-gray-500">
-              A modern marketplace platform helping businesses
-              sell smarter, manage operations and reach more
-              customers across India.
+              A modern marketplace platform helping businesses sell smarter,
+              manage operations and reach more customers across India.
             </p>
 
             {/* Social */}
@@ -108,9 +97,7 @@ export default function Footer() {
                 <TwitterIcon />
               </SocialButton>
             </div>
-
           </div>
-
 
           {/* MARKETPLACE */}
 
@@ -124,7 +111,6 @@ export default function Footer() {
             ]}
           />
 
-
           {/* SELLERS */}
 
           <FooterColumn
@@ -136,7 +122,6 @@ export default function Footer() {
               ["Seller Support", "/seller-support"],
             ]}
           />
-
 
           {/* SUPPORT */}
 
@@ -150,7 +135,6 @@ export default function Footer() {
             ]}
           />
 
-
           {/* COMPANY */}
 
           <FooterColumn
@@ -162,9 +146,7 @@ export default function Footer() {
               ["Become a Partner", "/partners"],
             ]}
           />
-
         </div>
-
 
         {/* ============================================================
                     NEWSLETTER
@@ -172,7 +154,6 @@ export default function Footer() {
 
         <div className="border-y border-white/10 py-8">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-
             <div>
               <div className="flex items-center gap-2">
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-500/10 text-red-500">
@@ -185,8 +166,8 @@ export default function Footer() {
               </div>
 
               <p className="mt-2 text-xs leading-5 text-gray-600 sm:text-sm">
-                Get seller tips, marketplace updates and new
-                features in your inbox.
+                Get seller tips, marketplace updates and new features in your
+                inbox.
               </p>
             </div>
 
@@ -207,57 +188,35 @@ export default function Footer() {
                 Subscribe
               </button>
             </form>
-
           </div>
         </div>
-
 
         {/* ============================================================
                     TRUST FEATURES
                 ============================================================ */}
 
         <div className="flex flex-col gap-6 py-8 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-
           <div className="flex flex-wrap gap-x-7 gap-y-4">
+            <TrustItem icon={<ShieldIcon />} text="Secure Platform" />
 
-            <TrustItem
-              icon={<ShieldIcon />}
-              text="Secure Platform"
-            />
+            <TrustItem icon={<TruckIcon />} text="Reliable Delivery" />
 
-            <TrustItem
-              icon={<TruckIcon />}
-              text="Reliable Delivery"
-            />
+            <TrustItem icon={<HeadphonesIcon />} text="Dedicated Support" />
 
-            <TrustItem
-              icon={<HeadphonesIcon />}
-              text="Dedicated Support"
-            />
-
-            <TrustItem
-              icon={<BadgeIcon />}
-              text="Verified Sellers"
-            />
-
+            <TrustItem icon={<BadgeIcon />} text="Verified Sellers" />
           </div>
 
           <span className="text-xs text-gray-700">
             Made for businesses across India
           </span>
-
         </div>
-
 
         {/* ============================================================
                     BOTTOM BAR
                 ============================================================ */}
 
         <div className="flex flex-col gap-5 border-t border-white/10 py-6 text-xs md:flex-row md:items-center md:justify-between">
-
-          <p className="text-gray-600">
-            © 2026 MYSMME. All rights reserved.
-          </p>
+          <p className="text-gray-600">© 2026 MYSMME. All rights reserved.</p>
 
           <div className="flex flex-wrap gap-x-6 gap-y-3">
             <Link
@@ -267,10 +226,7 @@ export default function Footer() {
               Privacy
             </Link>
 
-            <Link
-              href="/terms"
-              className="transition-colors hover:text-white"
-            >
+            <Link href="/terms" className="transition-colors hover:text-white">
               Terms
             </Link>
 
@@ -288,14 +244,11 @@ export default function Footer() {
               Support
             </Link>
           </div>
-
         </div>
-
       </div>
     </footer>
   );
 }
-
 
 /* ================================================================
    FOOTER COLUMN
@@ -310,9 +263,7 @@ function FooterColumn({
 }) {
   return (
     <div className="lg:col-span-2">
-      <h3 className="text-sm font-semibold text-white">
-        {title}
-      </h3>
+      <h3 className="text-sm font-semibold text-white">{title}</h3>
 
       <ul className="mt-5 space-y-3">
         {links.map(([label, href]) => (
@@ -333,7 +284,6 @@ function FooterColumn({
     </div>
   );
 }
-
 
 /* ================================================================
    SOCIAL BUTTON
@@ -357,29 +307,19 @@ function SocialButton({
   );
 }
 
-
 /* ================================================================
    TRUST ITEM
 ================================================================ */
 
-function TrustItem({
-  icon,
-  text,
-}: {
-  icon: ReactNode;
-  text: string;
-}) {
+function TrustItem({ icon, text }: { icon: ReactNode; text: string }) {
   return (
     <div className="flex items-center gap-2 text-xs text-gray-600">
-      <span className="text-red-500">
-        {icon}
-      </span>
+      <span className="text-red-500">{icon}</span>
 
       <span>{text}</span>
     </div>
   );
 }
-
 
 /* ================================================================
    ICONS
@@ -397,59 +337,34 @@ function InstagramIcon() {
     >
       <rect x="3" y="3" width="18" height="18" rx="5" />
       <circle cx="12" cy="12" r="4" />
-      <circle
-        cx="17.5"
-        cy="6.5"
-        r="1"
-        fill="currentColor"
-        stroke="none"
-      />
+      <circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none" />
     </svg>
   );
 }
 
-
 function FacebookIcon() {
   return (
-    <svg
-      width="17"
-      height="17"
-      viewBox="0 0 24 24"
-      fill="currentColor"
-    >
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor">
       <path d="M14 8h3V4h-3c-3.3 0-5 2-5 5v3H6v4h3v8h4v-8h3.5l.5-4H13V9c0-.7.3-1 1-1Z" />
     </svg>
   );
 }
 
-
 function LinkedInIcon() {
   return (
-    <svg
-      width="17"
-      height="17"
-      viewBox="0 0 24 24"
-      fill="currentColor"
-    >
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor">
       <path d="M5 3.5A2.5 2.5 0 1 1 5 8a2.5 2.5 0 0 1 0-4.5ZM3 9h4v12H3V9Zm6 0h3.8v1.7h.1c.5-1 1.8-2.1 3.8-2.1 4 0 4.7 2.6 4.7 6v6.4h-4v-5.7c0-1.4 0-3.2-2-3.2s-2.3 1.5-2.3 3.1V21H9V9Z" />
     </svg>
   );
 }
 
-
 function TwitterIcon() {
   return (
-    <svg
-      width="17"
-      height="17"
-      viewBox="0 0 24 24"
-      fill="currentColor"
-    >
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor">
       <path d="M18.9 2H22l-6.8 7.8L23.2 22h-6.3l-4.9-6.4L6.4 22H3.3l7.2-8.3L2.8 2h6.4l4.4 5.8L18.9 2Zm-1.1 17.8h1.7L8.3 4.1H6.5l11.3 15.7Z" />
     </svg>
   );
 }
-
 
 function MailIcon() {
   return (
@@ -467,7 +382,6 @@ function MailIcon() {
   );
 }
 
-
 function ShieldIcon() {
   return (
     <svg
@@ -483,7 +397,6 @@ function ShieldIcon() {
     </svg>
   );
 }
-
 
 function TruckIcon() {
   return (
@@ -503,7 +416,6 @@ function TruckIcon() {
   );
 }
 
-
 function HeadphonesIcon() {
   return (
     <svg
@@ -520,7 +432,6 @@ function HeadphonesIcon() {
     </svg>
   );
 }
-
 
 function BadgeIcon() {
   return (

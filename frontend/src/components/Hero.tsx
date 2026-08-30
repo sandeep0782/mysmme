@@ -132,14 +132,14 @@ const Hero = () => {
           {/* CTA buttons */}
           <div className="mt-8 flex flex-wrap justify-center gap-4">
             <Link
-              href="/collections"
+              href="/sarees"
               className="rounded-full bg-white px-7 py-3 font-semibold text-gray-900 shadow-lg transition-colors hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-transparent"
             >
               Explore Collection
             </Link>
 
             <Link
-              href="/new-arrivals"
+              href="/sarees"
               className="rounded-full border border-white bg-black/20 px-7 py-3 font-semibold text-white shadow-lg backdrop-blur-[2px] transition-colors hover:bg-white hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-transparent"
             >
               Shop New Arrivals
