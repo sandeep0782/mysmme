@@ -28,7 +28,7 @@ router.get(
 router.get(
   "/google/callback",
   passport.authenticate("google", {
-    failureRedirect: `${process.env.FRONTEND_URL}`,
+    failureRedirect: `${process.env.NEXT_PUBLIC_SITE_URL}`,
     session: false,
   }),
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
@@ -45,7 +45,7 @@ router.get(
         maxAge: 24 * 60 * 60 * 1000,
       });
 
-      res.redirect(`${process.env.FRONTEND_URL}`);
+      res.redirect(`${process.env.NEXT_PUBLIC_SITE_URL}`);
     } catch (error) {
       next(error);
     }
