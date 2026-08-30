@@ -35,7 +35,7 @@ export default function LoginPage() {
 
       if (result.success) {
         const role = result.data.user.role;
-        
+
         dispatch(authStatus());
 
         // Block normal users from this application
@@ -47,17 +47,17 @@ export default function LoginPage() {
         toast.success("Login Successful");
 
         if (role === "admin" || role === "super-admin") {
-          window.location.href = `${process.env.NEXT_PUBLIC_ADMIN_URL}/platform/admin`;
+          window.location.href = "/platform/admin";
           return;
         }
 
         if (role === "seller") {
-          window.location.href = `${process.env.NEXT_PUBLIC_ADMIN_URL}/platform/seller`;
+          window.location.href = "/platform/seller";
           return;
         }
 
         if (role === "freelancer") {
-          window.location.href = `${process.env.NEXT_PUBLIC_ADMIN_URL}/platform/freelancer`;
+          window.location.href = "/platform/freelancer";
           return;
         }
       }
