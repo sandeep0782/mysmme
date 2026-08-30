@@ -1,12 +1,12 @@
 import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
-import bodyParser from "body-parser";
 import cookiesParser from "cookie-parser";
 import connectDB from "./config/dbConnect";
 import authRoute from "./routes/authRoute";
 import passport from "passport";
 import "./controllers/strategy/google.strategy";
+
 import seasonRoutes from "./routes/seasonRoutes";
 import brandRoutes from "./routes/brandRoutes";
 import categoryRoutes from "./routes/categoryRoutes";
@@ -32,56 +32,60 @@ dotenv.config();
 const PORT = process.env.PORT || 8000;
 
 const app = express();
+
 app.set("trust proxy", 1);
+
 const allowedOrigins = [
   process.env.NEXT_PUBLIC_SITE_URL,
   process.env.NEXT_PUBLIC_ADMIN_URL,
 ].filter(Boolean);
+
 console.log("CORS allowed origins:", allowedOrigins);
-console.log(process.env.NEXT_PUBLIC_SITE_URL);
-console.log(process.env.NEXT_PUBLIC_ADMIN_URL);
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      console.log("Incoming Origin:", origin);
 
-      // Allow Postman/server-to-server requests
-      if (!origin) {
-        return callback(null, true);
-      }
+const corsOptions = {
+  origin: (origin: string | undefined, callback: Function) => {
+    console.log("Incoming Origin:", origin);
 
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
+    // Requests without Origin
+    // (Postman, server-to-server, etc.)
+    if (!origin) {
+      return callback(null, true);
+    }
 
-      console.log("CORS BLOCKED:", origin);
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
 
-      return callback(new Error(`CORS blocked origin: ${origin}`));
-    },
+    console.log("CORS BLOCKED:", origin);
 
-    credentials: true,
+    return callback(null, false);
+  },
 
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  credentials: true,
 
-    allowedHeaders: ["Content-Type", "Authorization"],
-  }),
-);
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+
+  allowedHeaders: ["Content-Type", "Authorization"],
+};
+
+app.use(cors(corsOptions));
+
+app.use(express.json());
+
+app.use(passport.initialize());
+
+app.use(cookiesParser());
 
 // Test API route
 app.get("/", (req, res) => {
   res.send("Welcome to MYSMME backend! API is live ✅");
 });
-// app.use(cors(corsOptions))
-app.use(express.json());
-app.use(bodyParser.json());
-app.use(passport.initialize());
-app.use(cookiesParser());
 
 connectDB();
 
 startProductImportWorker();
 
-// api endpoints
+// API endpoints
 app.use("/api/auth", authRoute);
 app.use("/api/season", seasonRoutes);
 app.use("/api/brand", brandRoutes);
@@ -89,7 +93,7 @@ app.use("/api/category", categoryRoutes);
 app.use("/api/colors", colorRoutes);
 app.use("/api/products", productRoute);
 app.use("/api/admin/templates", templateRoutes);
-app.use("/api/gst/", gstRoutes);
+app.use("/api/gst", gstRoutes);
 app.use("/api/product-attributes", productAttributeRoutes);
 app.use("/api/product-imports", productImportRoutes);
 app.use("/api/cart", cartRoutes);
@@ -103,5 +107,5 @@ app.use("/api/campaigns", campaignRoutes);
 app.use("/api/reels", reelRoutes);
 
 app.listen(PORT, () => {
-  console.log(`Server is running on ${process.env.PORT}`);
+  console.log(`Server is running on ${PORT}`);
 });
