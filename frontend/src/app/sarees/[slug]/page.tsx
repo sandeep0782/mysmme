@@ -282,7 +282,7 @@ const SareeDetailsPage = () => {
           <section>
             <h2 className="sr-only">{saree.title} images</h2>
 
-            <div className="grid grid-cols-2 gap-2 md:gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3">
               {saree.images.map((image, index) => (
                 <div
                   key={`${image}-${index}`}
