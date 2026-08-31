@@ -6,6 +6,12 @@ services:
     container_name: mysmme-server
     ports:
       - "${SERVER_PORT:-8000}:8000"
+    environment:
+      NODE_ENV: ${NODE_ENV}
+      PORT: 8000
+      NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL}
+      NEXT_PUBLIC_ADMIN_URL: ${NEXT_PUBLIC_ADMIN_URL}
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
     env_file:
       - ./server/.env
     restart: unless-stopped
@@ -20,6 +26,10 @@ services:
     container_name: mysmme-frontend
     ports:
       - "${FRONTEND_PORT:-3000}:3000"
+    environment:
+      NODE_ENV: ${NODE_ENV}
+      NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL}
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
     env_file:
       - ./frontend/.env
     depends_on:
@@ -36,6 +46,10 @@ services:
     container_name: mysmme-admin
     ports:
       - "${ADMIN_PORT:-4000}:4000"
+    environment:
+      NODE_ENV: ${NODE_ENV}
+      NEXT_PUBLIC_ADMIN_URL: ${NEXT_PUBLIC_ADMIN_URL}
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
     env_file:
       - ./admin/.env
     depends_on:
