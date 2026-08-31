@@ -9,7 +9,8 @@ import { response } from "../utils/responseHandler";
 export const addOrUpdateReview = async (req: Request, res: Response) => {
   try {
     const userId = req.id; // from auth middleware
-    const { productId } = req.params; // <- get from URL
+    const { productId } = req.params as { productId: string };
+
     const { rating, comment } = req.body; // rating & comment stay in body
 
     if (!rating || rating < 1 || rating > 5) {

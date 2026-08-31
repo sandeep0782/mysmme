@@ -1,0 +1,13 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const gstController_1 = require("../controllers/gstController");
+const authMiddleware_1 = require("../middleware/authMiddleware");
+const router = (0, express_1.Router)();
+router.get("/", authMiddleware_1.authenticateUser, gstController_1.getGsts);
+router.get("/active", authMiddleware_1.authenticateUser, gstController_1.getActiveGsts);
+router.get("/:id", authMiddleware_1.authenticateUser, gstController_1.getGstById);
+router.post("/", authMiddleware_1.authenticateUser, gstController_1.createGst);
+router.patch("/:id", authMiddleware_1.authenticateUser, gstController_1.updateGst);
+router.delete("/:id", authMiddleware_1.authenticateUser, gstController_1.deleteGst);
+exports.default = router;

@@ -1,100 +1,583 @@
+"use client";
 
 import Image from "next/image";
-import React from "react";
+import Link from "next/link";
+import React, { useEffect, useMemo, useState } from "react";
+import { useGetProductsQuery } from "@/store/api/productApi";
 
-const occasions = [
-    {
-        id: "wedding",
-        title: "Wedding Sarees",
-        description: "Elegant sarees for your special day",
-        image: "/images/occasions/wedding.jpg",
-    },
-    {
-        id: "festive",
-        title: "Festive Sarees",
-        description: "Vibrant styles for every celebration",
-        image: "/images/occasions/festive.jpg",
-    },
-    {
-        id: "party",
-        title: "Party Wear",
-        description: "Make every evening unforgettable",
-        image: "/images/occasions/party.jpg",
-    },
-    {
-        id: "everyday",
-        title: "Everyday Sarees",
-        description: "Comfortable elegance for every day",
-        image: "/images/occasions/everyday.jpg",
-    },
-];
+const FALLBACK_IMAGE = "/images/saree-1.jpg";
+
+interface Product {
+  _id: string;
+  title: string;
+  slug: string;
+  occasion?: string;
+  images?: string[];
+}
+
+interface Occasion {
+  name: string;
+  image: string;
+  productCount: number;
+}
 
 const ShopByOccasion = () => {
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const [itemsPerSlide, setItemsPerSlide] = useState(1);
+  const [isPaused, setIsPaused] = useState(false);
+
+  const { data, isLoading } = useGetProductsQuery({});
+
+  const products: Product[] = data?.data ?? [];
+
+  // ============================================================
+  // CREATE UNIQUE OCCASIONS FROM PRODUCTS
+  // ============================================================
+
+  const occasions = useMemo<Occasion[]>(() => {
+    const occasionMap = new Map<
+      string,
+      {
+        image: string;
+        productCount: number;
+      }
+    >();
+
+    products.forEach((product) => {
+      const occasionName = product.occasion?.trim();
+
+      // Ignore products without an occasion
+      if (!occasionName) return;
+
+      const existing = occasionMap.get(occasionName);
+
+      if (existing) {
+        existing.productCount += 1;
+
+        // If current image is fallback, try to use a real product image
+        if (existing.image === FALLBACK_IMAGE && product.images?.[0]) {
+          existing.image = product.images[0];
+        }
+      } else {
+        occasionMap.set(occasionName, {
+          image: product.images?.[0] || FALLBACK_IMAGE,
+          productCount: 1,
+        });
+      }
+    });
+
+    return Array.from(occasionMap.entries()).map(([name, value]) => ({
+      name,
+      image: value.image,
+      productCount: value.productCount,
+    }));
+  }, [products]);
+
+  // ============================================================
+  // RESPONSIVE ITEMS PER SLIDE
+  // ============================================================
+
+  useEffect(() => {
+    const updateItemsPerSlide = () => {
+      if (window.innerWidth >= 1280) {
+        // Large desktop → 4 cards
+        setItemsPerSlide(4);
+      } else if (window.innerWidth >= 1024) {
+        // Desktop → 3 cards
+        setItemsPerSlide(3);
+      } else if (window.innerWidth >= 640) {
+        // Tablet → 2 cards
+        setItemsPerSlide(2);
+      } else {
+        // Mobile → 1 card
+        setItemsPerSlide(1);
+      }
+    };
+
+    updateItemsPerSlide();
+
+    window.addEventListener("resize", updateItemsPerSlide);
+
+    return () => {
+      window.removeEventListener("resize", updateItemsPerSlide);
+    };
+  }, []);
+
+  // ============================================================
+  // TOTAL SLIDES
+  // ============================================================
+
+  const totalSlides =
+    itemsPerSlide > 0 ? Math.ceil(occasions.length / itemsPerSlide) : 0;
+
+  // ============================================================
+  // KEEP CURRENT SLIDE VALID
+  // ============================================================
+
+  useEffect(() => {
+    if (totalSlides === 0) {
+      setCurrentSlide(0);
+      return;
+    }
+
+    if (currentSlide >= totalSlides) {
+      setCurrentSlide(totalSlides - 1);
+    }
+  }, [currentSlide, totalSlides]);
+
+  // ============================================================
+  // AUTO CAROUSEL
+  // ============================================================
+
+  useEffect(() => {
+    if (totalSlides <= 1 || isPaused) {
+      return;
+    }
+
+    const timer = window.setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % totalSlides);
+    }, 5000);
+
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [totalSlides, isPaused]);
+
+  // ============================================================
+  // PREVIOUS SLIDE
+  // ============================================================
+
+  const prevSlide = () => {
+    if (totalSlides <= 1) return;
+
+    setCurrentSlide((prev) => (prev - 1 + totalSlides) % totalSlides);
+  };
+
+  // ============================================================
+  // NEXT SLIDE
+  // ============================================================
+
+  const nextSlide = () => {
+    if (totalSlides <= 1) return;
+
+    setCurrentSlide((prev) => (prev + 1) % totalSlides);
+  };
+
+  // ============================================================
+  // LOADING STATE
+  // ============================================================
+
+  if (isLoading) {
     return (
-        <section className="bg-pink-50 px-6 py-16">
-            <div className="mx-auto max-w-7xl">
-                {/* Heading */}
-                <div className="mb-12 text-center">
-                    <p className="text-sm font-semibold uppercase tracking-[0.25em] text-pink-600">
-                        Shop By Occasion
-                    </p>
+      <section className="bg-pink-50 px-6 py-12">
+        <div className="mx-auto max-w-7xl">
+          {/* Heading */}
 
-                    <h2 className="mt-3 text-3xl font-bold text-gray-900 md:text-4xl">
-                        A Saree for Every Celebration
-                    </h2>
+          <div className="mb-10 text-center">
+            <p className="text-sm font-semibold uppercase tracking-[0.25em] text-pink-600">
+              Shop By Occasion
+            </p>
 
-                    <p className="mx-auto mt-4 max-w-2xl text-gray-600">
-                        Whether it&apos;s a grand wedding, festive celebration
-                        or an everyday moment, find a saree that makes you
-                        shine.
-                    </p>
-                </div>
+            <h2 className="mt-3 text-3xl font-bold text-gray-900 md:text-4xl">
+              A Saree for Every Celebration
+            </h2>
 
-                {/* Occasion Cards */}
-                <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-                    {occasions.map((occasion) => (
-                        <div
-                            key={occasion.id}
-                            className="group relative h-[360px] overflow-hidden rounded-2xl shadow-md transition-all duration-500 hover:-translate-y-2 hover:shadow-xl"
+            <p className="mx-auto mt-3 max-w-2xl text-gray-600">
+              Whether it&apos;s a grand wedding, festive celebration or an
+              everyday moment, find a saree that makes you shine.
+            </p>
+          </div>
+
+          {/* Skeleton Cards */}
+
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {[1, 2, 3, 4].map((item) => (
+              <div
+                key={item}
+                className="
+                  h-[340px]
+                  animate-pulse
+                  overflow-hidden
+                  rounded-xl
+                  bg-gray-200
+                  sm:h-[360px]
+                  lg:h-[380px]
+                  xl:h-[400px]
+                "
+              />
+            ))}
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  // ============================================================
+  // EMPTY STATE
+  // ============================================================
+
+  if (occasions.length === 0) {
+    return null;
+  }
+
+  // ============================================================
+  // RENDER
+  // ============================================================
+
+  return (
+    <section className="bg-pink-50 px-6 py-12">
+      <div className="mx-auto max-w-7xl">
+        {/* ======================================================
+            SECTION HEADING
+        ====================================================== */}
+
+        <div className="mb-10 text-center">
+          <p className="text-sm font-semibold uppercase tracking-[0.25em] text-pink-600">
+            Shop By Occasion
+          </p>
+
+          <h2 className="mt-3 text-3xl font-bold text-gray-900 md:text-4xl">
+            A Saree for Every Celebration
+          </h2>
+
+          <p className="mx-auto mt-3 max-w-2xl text-gray-600">
+            Whether it&apos;s a grand wedding, festive celebration or an
+            everyday moment, find a saree that makes you shine.
+          </p>
+        </div>
+
+        {/* ======================================================
+            CAROUSEL
+        ====================================================== */}
+
+        <div
+          className="relative"
+          onMouseEnter={() => setIsPaused(true)}
+          onMouseLeave={() => setIsPaused(false)}
+        >
+          {/* ====================================================
+              VIEWPORT
+          ==================================================== */}
+
+          <div className="overflow-hidden">
+            <div
+              className="flex transition-transform duration-500 ease-in-out"
+              style={{
+                transform: `translateX(-${currentSlide * 100}%)`,
+              }}
+            >
+              {Array.from({
+                length: totalSlides,
+              }).map((_, slideIndex) => {
+                const slideOccasions = occasions.slice(
+                  slideIndex * itemsPerSlide,
+                  slideIndex * itemsPerSlide + itemsPerSlide,
+                );
+
+                return (
+                  <div key={slideIndex} className="min-w-full">
+                    {/* ==================================================
+                        CARDS
+                    ================================================== */}
+
+                    <div className="flex justify-center gap-5 sm:gap-6">
+                      {slideOccasions.map((occasion) => (
+                        <Link
+                          key={occasion.name}
+                          href={`/sarees?occasion=${encodeURIComponent(
+                            occasion.name,
+                          )}`}
+                          className="
+                            group
+                            min-w-0
+                            w-full
+                            overflow-hidden
+                            rounded-xl
+                            bg-white
+                            shadow-md
+                            transition-all
+                            duration-300
+                            hover:-translate-y-1
+                            hover:shadow-xl
+
+                            sm:w-[calc(50%-12px)]
+
+                            lg:w-[calc(33.333%-16px)]
+
+                            xl:w-[calc(25%-18px)]
+                          "
                         >
-                            {/* Image */}
+                          {/* ==================================================
+                              IMAGE
+                          ================================================== */}
+
+                          <div
+                            className="
+                              relative
+                              h-[340px]
+                              overflow-hidden
+                              bg-gray-100
+
+                              sm:h-[360px]
+
+                              lg:h-[380px]
+
+                              xl:h-[400px]
+                            "
+                          >
                             <Image
-                                src={occasion.image}
-                                alt={occasion.title}
-                                fill
-                                className="object-cover transition-transform duration-700 group-hover:scale-110"
+                              src={occasion.image || FALLBACK_IMAGE}
+                              alt={`${occasion.name} Sarees`}
+                              fill
+                              priority={slideIndex === 0}
+                              loading={slideIndex === 0 ? "eager" : "lazy"}
+                              sizes="
+                                (min-width: 1280px) 25vw,
+                                (min-width: 1024px) 33vw,
+                                (min-width: 640px) 50vw,
+                                100vw
+                              "
+                              className="
+                                object-contain
+                                transition-transform
+                                duration-500
+                                group-hover:scale-105
+                              "
                             />
 
-                            {/* Gradient Overlay */}
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                            {/* ==================================================
+                                DARK GRADIENT
+                            ================================================== */}
 
-                            {/* Content */}
-                            <div className="absolute inset-x-0 bottom-0 p-6 text-white">
-                                <h3 className="text-2xl font-bold">
-                                    {occasion.title}
-                                </h3>
+                            <div
+                              className="
+                                absolute
+                                inset-0
+                                bg-gradient-to-t
+                                from-black/85
+                                via-black/25
+                                to-transparent
+                              "
+                            />
 
-                                <p className="mt-2 text-sm text-gray-200">
-                                    {occasion.description}
-                                </p>
+                            {/* ==================================================
+                                OCCASION LABEL
+                            ================================================== */}
 
-                                {/* Explore Button */}
-                                <button
-                                    type="button"
-                                    className="mt-5 inline-flex translate-y-2 items-center gap-2 rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-gray-900 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100 hover:bg-red-500 hover:text-white"
-                                >
-                                    Explore
-                                    <span className="text-lg transition-transform duration-300 group-hover:translate-x-1">
-                                        →
-                                    </span>
-                                </button>
+                            <div className="absolute left-4 top-4">
+                              <span
+                                className="
+                                  rounded-full
+                                  bg-white/90
+                                  px-3
+                                  py-1.5
+                                  text-[11px]
+                                  font-semibold
+                                  uppercase
+                                  tracking-wider
+                                  text-gray-900
+                                  backdrop-blur-sm
+                                "
+                              >
+                                Occasion
+                              </span>
                             </div>
-                        </div>
-                    ))}
-                </div>
+
+                            {/* ==================================================
+                                CONTENT
+                            ================================================== */}
+
+                            <div
+                              className="
+                                absolute
+                                bottom-0
+                                left-0
+                                w-full
+                                p-5
+                                text-white
+                              "
+                            >
+                              {/* Occasion Name */}
+
+                              <h3
+                                className="
+                                  line-clamp-2
+                                  text-xl
+                                  font-bold
+                                  sm:text-2xl
+                                "
+                              >
+                                {occasion.name} Sarees
+                              </h3>
+
+                              {/* Product Count */}
+
+                              <p className="mt-1 text-sm text-gray-200">
+                                {occasion.productCount}{" "}
+                                {occasion.productCount === 1
+                                  ? "Saree"
+                                  : "Sarees"}
+                              </p>
+
+                              {/* ==================================================
+                                  BUTTON
+                              ================================================== */}
+
+                              <span
+                                className="
+                                  mt-4
+                                  inline-flex
+                                  items-center
+                                  gap-2
+                                  rounded-full
+                                  bg-white
+                                  px-4
+                                  py-2
+                                  text-sm
+                                  font-semibold
+                                  text-gray-900
+                                  transition-all
+                                  duration-300
+                                  group-hover:bg-red-500
+                                  group-hover:text-white
+                                "
+                              >
+                                View Occasion
+                                <span
+                                  className="
+                                    text-base
+                                    transition-transform
+                                    duration-300
+                                    group-hover:translate-x-1
+                                  "
+                                >
+                                  →
+                                </span>
+                              </span>
+                            </div>
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-        </section>
-    );
+          </div>
+
+          {/* ======================================================
+              PREVIOUS / NEXT BUTTONS
+          ====================================================== */}
+
+          {totalSlides > 1 && (
+            <>
+              {/* Previous */}
+
+              <button
+                type="button"
+                onClick={prevSlide}
+                aria-label="Previous occasions"
+                className="
+                  absolute
+                  left-1
+                  top-1/2
+                  z-20
+                  flex
+                  h-9
+                  w-9
+                  -translate-y-1/2
+                  items-center
+                  justify-center
+                  rounded-full
+                  bg-white/95
+                  text-gray-900
+                  shadow-lg
+                  transition-all
+                  duration-300
+                  hover:bg-red-500
+                  hover:text-white
+                  focus:outline-none
+
+                  sm:left-2
+                  sm:h-10
+                  sm:w-10
+                "
+              >
+                <span aria-hidden="true">&#10094;</span>
+              </button>
+
+              {/* Next */}
+
+              <button
+                type="button"
+                onClick={nextSlide}
+                aria-label="Next occasions"
+                className="
+                  absolute
+                  right-1
+                  top-1/2
+                  z-20
+                  flex
+                  h-9
+                  w-9
+                  -translate-y-1/2
+                  items-center
+                  justify-center
+                  rounded-full
+                  bg-white/95
+                  text-gray-900
+                  shadow-lg
+                  transition-all
+                  duration-300
+                  hover:bg-red-500
+                  hover:text-white
+                  focus:outline-none
+
+                  sm:right-2
+                  sm:h-10
+                  sm:w-10
+                "
+              >
+                <span aria-hidden="true">&#10095;</span>
+              </button>
+            </>
+          )}
+
+          {/* ======================================================
+              DOTS
+          ====================================================== */}
+
+          {totalSlides > 1 && (
+            <div className="mt-6 flex justify-center gap-2">
+              {Array.from({
+                length: totalSlides,
+              }).map((_, index) => (
+                <button
+                  key={index}
+                  type="button"
+                  onClick={() => setCurrentSlide(index)}
+                  aria-label={`Go to occasion slide ${index + 1}`}
+                  aria-current={currentSlide === index ? "true" : undefined}
+                  className={`
+                    h-2
+                    rounded-full
+                    transition-all
+                    duration-300
+
+                    ${
+                      currentSlide === index
+                        ? "w-7 bg-red-500"
+                        : "w-2 bg-gray-300 hover:bg-gray-400"
+                    }
+                  `}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
+  );
 };
 
 export default ShopByOccasion;

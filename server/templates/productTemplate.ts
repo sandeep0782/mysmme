@@ -73,11 +73,11 @@ export const generateProductImportTemplate = async (
   // SHEETS
   // ============================================================
 
-  const instructions = workbook.addWorksheet("Instructions", 0);
+  const instructions = workbook.addWorksheet("Instructions");
 
-  const worksheet = workbook.addWorksheet("Saree-Fill-This", 1);
+  const worksheet = workbook.addWorksheet("Saree-Fill-This");
 
-  const systemData = workbook.addWorksheet("System-Data", 2);
+  const systemData = workbook.addWorksheet("System-Data");
 
   // Keep system data hidden
   systemData.state = "veryHidden";

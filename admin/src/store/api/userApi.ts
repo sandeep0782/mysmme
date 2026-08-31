@@ -1,11 +1,11 @@
 import { api, BASE_URL } from "../api";
 
 const API_URLS = {
-  GET_USERS: `${BASE_URL}/user`,
-  ADD_USER: `${BASE_URL}/user`,
-  UPDATE_USER: (userId: string) => `${BASE_URL}/user/${userId}`,
+  GET_USERS: `${BASE_URL}/users`,
+  ADD_USER: `${BASE_URL}/users`,
+  UPDATE_USER: (userId: string) => `${BASE_URL}/users/${userId}`,
 
-  DELETE_USER: (userId: string) => `${BASE_URL}/user/${userId}`,
+  DELETE_USER: (userId: string) => `${BASE_URL}/users/${userId}`,
 
   REGISTER: `${BASE_URL}/auth/register`,
   LOGIN: `${BASE_URL}/auth/login`,

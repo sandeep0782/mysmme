@@ -7,6 +7,7 @@ export interface ICampaign extends Document {
   productImage: string;
   category: string;
   description: string;
+  payout: number;
   royaltyPercentage: number;
   reelsRequired: number;
   deadline: string;
@@ -15,6 +16,7 @@ export interface ICampaign extends Document {
   platforms: string[];
   tags: string[];
   freelancerId: mongoose.Types.ObjectId;
+  acceptedBy: mongoose.Types.ObjectId[];
 }
 
 const campaignSchema = new Schema<ICampaign>(
@@ -51,6 +53,12 @@ const campaignSchema = new Schema<ICampaign>(
     description: {
       type: String,
       required: true,
+    },
+
+    payout: {
+      type: Number,
+      required: true,
+      min: 0,
     },
 
     royaltyPercentage: {
@@ -95,6 +103,12 @@ const campaignSchema = new Schema<ICampaign>(
       type: Schema.Types.ObjectId,
       ref: "User",
       required: true,
+    },
+
+    acceptedBy: {
+      type: [Schema.Types.ObjectId],
+      ref: "User",
+      default: [],
     },
   },
   {

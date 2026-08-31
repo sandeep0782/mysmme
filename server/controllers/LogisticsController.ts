@@ -9,7 +9,7 @@ export const createShipment = async (
   res: Response,
 ): Promise<void> => {
   try {
-    const { sellerOrderId } = req.params;
+    const { sellerOrderId } = req.params as { sellerOrderId: string };
     const { provider } = req.body as {
       provider: LogisticsProviderName;
     };
