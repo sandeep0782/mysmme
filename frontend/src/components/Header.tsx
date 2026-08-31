@@ -348,7 +348,7 @@ export default function Header() {
           <div className="relative w-full">
             <Input
               type="text"
-              placeholder="Search books..."
+              placeholder="Search..."
               className="w-full pr-10"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
