@@ -9,17 +9,47 @@ import ShopByOccasion from "@/components/ShopByOccasion";
 import Reels from "@/components/Reels";
 
 export default function Home() {
+  const storeSchema = {
+    "@context": "https://schema.org",
+    "@type": "OnlineStore",
+    name: "MYSMME",
+    alternateName: "MYSMME Saree Marketplace",
+    description:
+      "Online marketplace for buying and selling sarees and Indian ethnic wear.",
+    url: "https://mysmme.com",
+    areaServed: "India",
+    knowsAbout: [
+      "Sarees",
+      "Silk sarees",
+      "Cotton sarees",
+      "Indian ethnic wear",
+      "Women's fashion",
+      "Traditional Indian clothing",
+      "Online saree shopping",
+      "Saree marketplace",
+    ],
+  };
+
   return (
-    <main>
-      <Hero />
-      <CategorySlider />
-      <NewSarees />
-      <TrustFeatures />
-      <FeaturedCollection />
-      <Reels />
-      <Brand />
-      <ShopByOccasion />
-      <Cta />
-    </main>
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(storeSchema),
+        }}
+      />
+
+      <main>
+        <Hero />
+        <CategorySlider />
+        <NewSarees />
+        <TrustFeatures />
+        <FeaturedCollection />
+        <Reels />
+        <Brand />
+        <ShopByOccasion />
+        <Cta />
+      </main>
+    </>
   );
 }

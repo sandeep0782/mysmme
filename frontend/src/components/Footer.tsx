@@ -108,6 +108,7 @@ export default function Footer() {
               ["Categories", "/categories"],
               ["Featured Sellers", "/featured"],
               ["Deals & Offers", "/deals"],
+              ["FAQ", "/faq"],
             ]}
           />
 
