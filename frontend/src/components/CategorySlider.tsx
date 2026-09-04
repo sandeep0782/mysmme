@@ -5,24 +5,16 @@ import Link from "next/link";
 import React, { useEffect, useRef } from "react";
 
 import { useGetAllCategoriesQuery } from "@/store/api/categoryApi";
+
 const CategorySlider = () => {
   const containerRef = useRef<HTMLDivElement | null>(null);
-
   const trackRef = useRef<HTMLDivElement | null>(null);
-
   const animationRef = useRef<number | null>(null);
-
   const positionRef = useRef(0);
-
   const directionRef = useRef(-1);
-
   const isHoveredRef = useRef(false);
 
   const speed = 0.5;
-
-  // ============================================================
-  // GET CATEGORIES FROM REDUX / RTK QUERY
-  // ============================================================
 
   const {
     data: categories = [],
@@ -50,32 +42,24 @@ const CategorySlider = () => {
   useEffect(() => {
     const animate = () => {
       const container = containerRef.current;
-
       const track = trackRef.current;
 
       if (container && track && !isHoveredRef.current) {
         const containerWidth = container.clientWidth;
-
         const trackWidth = track.scrollWidth;
 
         const maxMovement = Math.max(0, trackWidth - containerWidth);
 
-        // Only move when content is
-        // wider than the container
         if (maxMovement > 0) {
           positionRef.current += speed * directionRef.current;
 
-          // Reached left side
           if (positionRef.current <= -maxMovement) {
             positionRef.current = -maxMovement;
-
             directionRef.current = 1;
           }
 
-          // Reached right side
           if (positionRef.current >= 0) {
             positionRef.current = 0;
-
             directionRef.current = -1;
           }
 
@@ -112,33 +96,43 @@ const CategorySlider = () => {
   // ============================================================
 
   return (
-    <section className="bg-white py-16">
+    <section
+      aria-labelledby="shop-by-category-heading"
+      className="bg-white py-16"
+    >
       <div className="container mx-auto px-4">
         {/* ==================================================
-                    HEADING
-                ================================================== */}
+                    SEO-FRIENDLY HEADING
+        ================================================== */}
 
-        <div className="mb-10 text-center">
+        <header className="mb-10 text-center">
           <p className="text-sm font-semibold uppercase tracking-[0.25em] text-red-500">
-            Explore
+            Explore Sarees
           </p>
 
-          <h2 className="mt-2 text-3xl font-bold text-gray-900 md:text-4xl">
-            Shop by Category
+          <h2
+            id="shop-by-category-heading"
+            className="mt-2 text-3xl font-bold text-gray-900 md:text-4xl"
+          >
+            Shop Sarees by Category
           </h2>
 
           <p className="mx-auto mt-3 max-w-xl text-gray-500">
-            Explore our collection of beautiful sarees crafted for every style
-            and occasion.
+            Discover beautiful sarees by category, style and fabric. Explore
+            traditional and contemporary sarees for weddings, festivals,
+            celebrations and everyday fashion.
           </p>
-        </div>
+        </header>
 
         {/* ==================================================
                     LOADING
-                ================================================== */}
+        ================================================== */}
 
         {isLoading && (
-          <div className="flex justify-center gap-8 overflow-hidden sm:gap-10 md:gap-12">
+          <div
+            className="flex justify-center gap-8 overflow-hidden sm:gap-10 md:gap-12"
+            aria-label="Loading saree categories"
+          >
             {[1, 2, 3, 4, 5].map((item) => (
               <div
                 key={item}
@@ -154,27 +148,27 @@ const CategorySlider = () => {
 
         {/* ==================================================
                     ERROR
-                ================================================== */}
+        ================================================== */}
 
         {isError && (
           <p className="text-center text-sm text-gray-500">
-            Unable to load categories.
+            Unable to load saree categories right now.
           </p>
         )}
 
         {/* ==================================================
                     EMPTY
-                ================================================== */}
+        ================================================== */}
 
         {!isLoading && !isError && categories.length === 0 && (
           <p className="text-center text-sm text-gray-500">
-            No categories available.
+            No saree categories are currently available.
           </p>
         )}
 
         {/* ==================================================
                     CATEGORY SLIDER
-                ================================================== */}
+        ================================================== */}
 
         {!isLoading && !isError && categories.length > 0 && (
           <div
@@ -190,43 +184,60 @@ const CategorySlider = () => {
                 willChange: "transform",
               }}
             >
-              {categories.map((category) => (
-                <Link
-                  key={category._id}
-                  href={`/sarees?category=${category.slug}`}
-                  className="group w-28 flex-shrink-0 cursor-pointer text-center sm:w-32 md:w-36"
-                >
-                  {/* ==================================================
-                                                CATEGORY IMAGE
-                                            ================================================== */}
+              {categories.map((category) => {
+                const categoryName = category.name?.trim();
 
-                  <div className="relative mx-auto h-24 w-24 overflow-hidden rounded-full border-4 border-white shadow-md transition-all duration-300 group-hover:shadow-xl sm:h-28 sm:w-28 md:h-32 md:w-32">
-                    {category.image ? (
-                      <Image
-                        src={category.image}
-                        alt={category.name}
-                        fill
-                        sizes="(max-width: 640px) 96px, (max-width: 768px) 112px, 128px"
-                        className="object-cover transition-transform duration-500 group-hover:scale-110"
+                const categoryUrl = `/sarees?category=${encodeURIComponent(
+                  category.slug,
+                )}`;
+
+                return (
+                  <Link
+                    key={category._id}
+                    href={categoryUrl}
+                    title={`Shop ${categoryName} sarees`}
+                    aria-label={`Shop ${categoryName} sarees`}
+                    className="group w-28 flex-shrink-0 cursor-pointer text-center sm:w-32 md:w-36"
+                  >
+                    {/* ==================================================
+                              CATEGORY IMAGE
+                    ================================================== */}
+
+                    <div className="relative mx-auto h-24 w-24 overflow-hidden rounded-full border-4 border-white shadow-md transition-all duration-300 group-hover:shadow-xl sm:h-28 sm:w-28 md:h-32 md:w-32">
+                      {category.image ? (
+                        <Image
+                          src={category.image}
+                          alt={`${categoryName} saree collection`}
+                          fill
+                          sizes="(max-width: 640px) 96px, (max-width: 768px) 112px, 128px"
+                          loading="lazy"
+                          className="object-cover transition-transform duration-500 group-hover:scale-110"
+                        />
+                      ) : (
+                        <div
+                          className="flex h-full w-full items-center justify-center bg-gray-100 text-xs text-gray-400"
+                          aria-hidden="true"
+                        >
+                          No Image
+                        </div>
+                      )}
+
+                      <div
+                        className="absolute inset-0 rounded-full bg-black/0 transition-all duration-300 group-hover:bg-black/25"
+                        aria-hidden="true"
                       />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center bg-gray-100 text-xs text-gray-400">
-                        No Image
-                      </div>
-                    )}
+                    </div>
 
-                    <div className="absolute inset-0 rounded-full bg-black/0 transition-all duration-300 group-hover:bg-black/25" />
-                  </div>
+                    {/* ==================================================
+                              CATEGORY NAME
+                    ================================================== */}
 
-                  {/* ==================================================
-                                                CATEGORY NAME
-                                            ================================================== */}
-
-                  <h3 className="mt-4 text-sm font-semibold text-gray-800 transition-colors duration-300 group-hover:text-red-500 sm:text-base">
-                    {category.name}
-                  </h3>
-                </Link>
-              ))}
+                    <h3 className="mt-4 text-sm font-semibold text-gray-800 transition-colors duration-300 group-hover:text-red-500 sm:text-base">
+                      {categoryName} Sarees
+                    </h3>
+                  </Link>
+                );
+              })}
             </div>
           </div>
         )}
