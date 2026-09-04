@@ -27,6 +27,7 @@ import sellerOrderRoutes from "./routes/sellerOrderRoutes";
 import logisticsRoutes from "./routes/LogisticsRoutes";
 import campaignRoutes from "./routes/campaignRoutes";
 import reelRoutes from "./routes/reelRoutes";
+import { robotsTxt } from "./robots";
 
 // Load environment variables BEFORE importing/starting
 // anything that depends on process.env.
@@ -100,6 +101,10 @@ app.use(passport.initialize());
 
 app.get("/", (_req: Request, res: Response) => {
   res.status(200).send("Welcome to MYSMME backend! API is live ✅");
+});
+
+app.get("/robots.txt", (_req, res) => {
+  res.type("text/plain").send(robotsTxt);
 });
 
 // -----------------------------------------------------

@@ -22,10 +22,9 @@ export default function AboutUsPage() {
     <main className="min-h-screen bg-[#fffdf9] text-[#241b18]">
       {/* =========================================================
       HERO
-  ========================================================= */}
+      ========================================================= */}
 
       <section className="relative overflow-hidden border-b border-[#eadfd6] bg-[#f8eee7]">
-        {/* Background decoration */}
         <div className="absolute -left-40 -top-40 h-[500px] w-[500px] rounded-full bg-[#a51c30]/10 blur-[120px]" />
         <div className="absolute -right-40 top-20 h-[450px] w-[450px] rounded-full bg-[#c99a45]/15 blur-[120px]" />
 
@@ -34,26 +33,27 @@ export default function AboutUsPage() {
           <div>
             <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-[#c99a45]/30 bg-white/75 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.22em] text-[#8d2635] shadow-sm backdrop-blur">
               <Sparkles className="h-4 w-4" />
-              India's Saree Marketplace
+              Indian Saree & Fashion Marketplace
             </div>
 
             <h1 className="max-w-3xl text-4xl font-extrabold leading-[1.05] tracking-tight text-[#241b18] sm:text-5xl lg:text-[4.4rem]">
-              Discover the beauty of
+              Discover Indian sarees, fashion &{" "}
               <span className="block bg-gradient-to-r from-[#a51c30] via-[#b62b3f] to-[#8d1729] bg-clip-text text-transparent">
-                Indian sarees.
+                beautiful collections.
               </span>
             </h1>
 
             <p className="mt-7 max-w-xl text-base leading-8 text-[#6f625c] sm:text-lg">
-              MYSMME is a modern marketplace created to bring saree lovers,
-              sellers, boutiques, and Indian fashion businesses together in one
-              beautiful shopping experience.
+              MYSMME is an Indian fashion marketplace connecting customers with
+              saree sellers, boutiques, fashion businesses, and independent
+              sellers. Our goal is to make it easier to discover traditional and
+              contemporary Indian clothing online.
             </p>
 
             <p className="mt-4 max-w-xl text-sm leading-7 text-[#81736c]">
-              From timeless traditional sarees to contemporary styles, we are
-              building a place where discovering something beautiful feels
-              simple, personal, and trustworthy.
+              From everyday sarees and festive collections to traditional
+              designs and modern styles, MYSMME brings different sellers and
+              Indian fashion products together in one convenient marketplace.
             </p>
 
             <div className="mt-9 flex flex-col gap-3 sm:flex-row">
@@ -66,17 +66,17 @@ export default function AboutUsPage() {
               </Link>
 
               <Link
-                href="/contact"
+                href="/seller"
                 className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#d8c8bd] bg-white px-6 py-3.5 text-sm font-bold text-[#4e403a] transition hover:border-[#a51c30] hover:text-[#a51c30]"
               >
-                Get in Touch
+                Become a Seller
               </Link>
             </div>
 
-            {/* Trust highlights */}
             <div className="mt-10 flex flex-wrap gap-x-6 gap-y-3">
-              <TrustItem text="Marketplace focused on Indian fashion" />
+              <TrustItem text="Indian fashion marketplace" />
               <TrustItem text="Built for customers & sellers" />
+              <TrustItem text="Sarees & ethnic fashion" />
             </div>
           </div>
 
@@ -88,7 +88,7 @@ export default function AboutUsPage() {
               <div className="relative aspect-[4/5] overflow-hidden rounded-[1.75rem] bg-[#ead8cc]">
                 <Image
                   src="/images/about-saree.jpg"
-                  alt="Beautiful Indian saree collection"
+                  alt="Indian saree collection available through MYSMME"
                   fill
                   priority
                   className="object-cover"
@@ -101,17 +101,16 @@ export default function AboutUsPage() {
                   </p>
 
                   <p className="mt-2 text-xl font-bold">
-                    Every saree has a story.
+                    Indian fashion, brought together.
                   </p>
 
                   <p className="mt-1 text-sm text-white/70">
-                    We are here to help you discover yours.
+                    Discover sarees and collections from marketplace sellers.
                   </p>
                 </div>
               </div>
             </div>
 
-            {/* Floating card */}
             <div className="absolute -bottom-6 -left-4 hidden rounded-2xl border border-[#eadfd6] bg-white p-4 shadow-xl sm:block lg:-left-8">
               <div className="flex items-center gap-3">
                 <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#fff3e5] text-[#b27a25]">
@@ -119,10 +118,10 @@ export default function AboutUsPage() {
                 </div>
 
                 <div>
-                  <p className="text-[11px] text-[#887a73]">Made with</p>
+                  <p className="text-[11px] text-[#887a73]">Our focus</p>
 
                   <p className="text-sm font-bold text-[#332723]">
-                    Love for Indian fashion
+                    Indian fashion & craftsmanship
                   </p>
                 </div>
               </div>
@@ -132,75 +131,200 @@ export default function AboutUsPage() {
       </section>
 
       {/* =========================================================
-      INTRODUCTION
-  ========================================================= */}
+      WHAT IS MYSMME
+      ========================================================= */}
 
       <section className="mx-auto max-w-7xl px-6 py-20 lg:px-8 lg:py-24">
         <div className="mx-auto max-w-3xl text-center">
           <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-[#a51c30]">
-            Who We Are
+            What Is MYSMME?
           </p>
 
           <h2 className="mt-4 text-3xl font-extrabold tracking-tight text-[#241b18] sm:text-4xl">
-            A marketplace created around the saree.
+            An online marketplace for Indian sarees and fashion.
           </h2>
 
           <p className="mt-6 text-base leading-8 text-[#6f625c] sm:text-lg">
-            A saree is more than something you wear. It can represent a
-            celebration, a memory, a family tradition, a craft, or simply a
-            personal sense of style.
+            MYSMME is a digital marketplace designed to connect shoppers with
+            sellers offering sarees, ethnic wear, traditional Indian clothing,
+            and other fashion products.
           </p>
 
           <p className="mt-4 text-base leading-8 text-[#6f625c]">
-            MYSMME brings that richness into a modern digital marketplace,
-            making it easier for customers to discover beautiful products while
-            helping sellers and businesses reach a wider audience.
+            Instead of searching across many individual stores and websites,
+            customers can use one marketplace to discover different collections,
+            compare products, find new sellers, and shop for Indian fashion
+            online.
+          </p>
+
+          <p className="mt-4 text-base leading-8 text-[#6f625c]">
+            At the same time, MYSMME gives saree sellers, boutiques, designers,
+            and Indian fashion businesses an opportunity to create an online
+            presence and reach customers beyond their local market.
           </p>
         </div>
 
         <div className="mt-14 grid gap-5 md:grid-cols-3">
           <InfoCard
             icon={<ShoppingBag className="h-5 w-5" />}
-            title="Discover"
-            description="Explore sarees and Indian fashion products from a growing marketplace of sellers and businesses."
+            title="Discover Indian Fashion"
+            description="Browse sarees, ethnic wear, traditional styles, and fashion collections from different marketplace sellers."
           />
 
           <InfoCard
             icon={<ShieldCheck className="h-5 w-5" />}
-            title="Shop With Confidence"
-            description="We are building a transparent and dependable marketplace experience for customers and sellers."
+            title="A Convenient Shopping Experience"
+            description="MYSMME is designed to make discovering products and shopping from different sellers simpler and more convenient."
           />
 
           <InfoCard
             icon={<Store className="h-5 w-5" />}
-            title="Empower Sellers"
-            description="We help sellers bring their collections online and connect with customers beyond their local markets."
+            title="A Marketplace for Sellers"
+            description="Saree sellers, boutiques, designers, and fashion businesses can showcase their products to a wider online audience."
+          />
+        </div>
+      </section>
+
+      {/* =========================================================
+      CATEGORIES / SEARCH INTENT
+      ========================================================= */}
+
+      <section className="border-y border-[#eadfd6] bg-[#fbf4ef]">
+        <div className="mx-auto max-w-7xl px-6 py-20 lg:px-8 lg:py-24">
+          <div className="grid gap-12 lg:grid-cols-[0.85fr_1.15fr] lg:items-center">
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-[#a51c30]">
+                Explore Indian Fashion
+              </p>
+
+              <h2 className="mt-4 text-3xl font-extrabold tracking-tight text-[#241b18] sm:text-4xl">
+                Find sarees and styles for every occasion.
+              </h2>
+
+              <p className="mt-6 text-base leading-8 text-[#6f625c]">
+                Indian sarees come in countless fabrics, weaving traditions,
+                colors, patterns, and regional styles. MYSMME aims to make this
+                variety easier to discover online.
+              </p>
+
+              <p className="mt-4 text-base leading-8 text-[#6f625c]">
+                Whether you are looking for a saree for a wedding, festival,
+                celebration, office, family occasion, or everyday wear, our
+                marketplace is built to help you discover collections from
+                different sellers.
+              </p>
+
+              <Link
+                href="/products"
+                className="group mt-8 inline-flex items-center gap-2 rounded-xl bg-[#a51c30] px-6 py-3.5 text-sm font-bold text-white shadow-lg shadow-[#a51c30]/15 transition hover:bg-[#8e1729]"
+              >
+                Browse Collections
+                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+              </Link>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FashionCategory
+                title="Traditional Sarees"
+                text="Discover sarees inspired by India's rich textile and cultural traditions."
+              />
+
+              <FashionCategory
+                title="Wedding & Festive Sarees"
+                text="Explore statement styles for weddings, festivals, celebrations, and special occasions."
+              />
+
+              <FashionCategory
+                title="Everyday Sarees"
+                text="Find comfortable and versatile sarees suited for regular wear and everyday style."
+              />
+
+              <FashionCategory
+                title="Contemporary Styles"
+                text="Discover modern interpretations of Indian saree fashion and changing trends."
+              />
+
+              <FashionCategory
+                title="Ethnic Fashion"
+                text="Explore Indian clothing and fashion products beyond the traditional saree."
+              />
+
+              <FashionCategory
+                title="Regional Craftsmanship"
+                text="Discover the diversity of Indian textiles, patterns, techniques, and regional fashion."
+              />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* =========================================================
+      HOW IT WORKS
+      ========================================================= */}
+
+      <section className="mx-auto max-w-7xl px-6 py-20 lg:px-8 lg:py-24">
+        <div className="mx-auto max-w-3xl text-center">
+          <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-[#a51c30]">
+            How MYSMME Works
+          </p>
+
+          <h2 className="mt-4 text-3xl font-extrabold tracking-tight text-[#241b18] sm:text-4xl">
+            Bringing customers and sellers together.
+          </h2>
+
+          <p className="mt-5 text-base leading-7 text-[#6f625c]">
+            MYSMME is designed around a simple marketplace model: sellers bring
+            their products to the platform, and customers discover collections
+            from different businesses in one place.
+          </p>
+        </div>
+
+        <div className="mt-14 grid gap-5 md:grid-cols-3">
+          <StepCard
+            number="01"
+            icon={<Store className="h-5 w-5" />}
+            title="Sellers List Products"
+            text="Saree sellers, boutiques, designers, and fashion businesses can showcase their collections through their marketplace presence."
+          />
+
+          <StepCard
+            number="02"
+            icon={<ShoppingBag className="h-5 w-5" />}
+            title="Customers Discover"
+            text="Shoppers can explore sarees and Indian fashion products from different sellers and discover collections that match their style."
+          />
+
+          <StepCard
+            number="03"
+            icon={<PackageCheck className="h-5 w-5" />}
+            title="Shop With Convenience"
+            text="Customers can find products in one marketplace while sellers gain another digital channel to reach potential buyers."
           />
         </div>
       </section>
 
       {/* =========================================================
       STATS / BRAND STRIP
-  ========================================================= */}
+      ========================================================= */}
 
-      <section className="border-y border-[#eadfd6] bg-[#fbf4ef]">
+      <section className="border-y border-[#eadfd6] bg-white">
         <div className="mx-auto grid max-w-7xl grid-cols-2 divide-x divide-[#e4d6cc] px-6 py-10 sm:grid-cols-4 lg:px-8">
           <BrandStat
             icon={<ShoppingBag className="h-5 w-5" />}
             title="Marketplace"
-            text="Built for Indian fashion"
+            text="Focused on Indian fashion"
           />
 
           <BrandStat
             icon={<Store className="h-5 w-5" />}
             title="For Sellers"
-            text="Grow your digital presence"
+            text="Build an online presence"
           />
 
           <BrandStat
             icon={<Users className="h-5 w-5" />}
             title="For Customers"
-            text="Discover unique collections"
+            text="Discover new collections"
           />
 
           <BrandStat
@@ -213,9 +337,9 @@ export default function AboutUsPage() {
 
       {/* =========================================================
       OUR STORY
-  ========================================================= */}
+      ========================================================= */}
 
-      <section className="border-b border-[#eadfd6] bg-white">
+      <section className="border-b border-[#eadfd6] bg-[#fffdf9]">
         <div className="mx-auto grid max-w-7xl items-center gap-14 px-6 py-20 lg:grid-cols-2 lg:px-8 lg:py-24">
           {/* Image */}
           <div className="relative">
@@ -225,7 +349,7 @@ export default function AboutUsPage() {
               <div className="relative aspect-[4/3] overflow-hidden rounded-[1.5rem] bg-[#ead8cc]">
                 <Image
                   src="/images/about-marketplace.jpg"
-                  alt="Indian fashion marketplace"
+                  alt="Indian fashion marketplace and saree sellers"
                   fill
                   className="object-cover"
                   sizes="(max-width: 1024px) 100vw, 50vw"
@@ -241,36 +365,48 @@ export default function AboutUsPage() {
             </p>
 
             <h2 className="mt-4 text-3xl font-extrabold tracking-tight text-[#241b18] sm:text-4xl">
-              Connecting beautiful products with the people who love them.
+              Making Indian fashion easier to discover online.
             </h2>
 
             <p className="mt-6 text-base leading-8 text-[#6f625c]">
-              The idea behind MYSMME is simple: talented sellers and Indian
-              fashion businesses deserve a place where their products can be
-              discovered by customers beyond their immediate surroundings.
+              Indian fashion has an incredible range of styles, fabrics,
+              craftsmanship, and regional traditions. Yet discovering products
+              from smaller sellers and independent fashion businesses online can
+              sometimes be difficult.
             </p>
 
             <p className="mt-4 text-base leading-8 text-[#6f625c]">
-              We are building MYSMME as a marketplace where traditional
-              craftsmanship and modern technology can come together — giving
-              customers more choice and sellers more opportunity.
+              MYSMME was created to help solve that problem by bringing
+              customers and sellers together through a dedicated Indian fashion
+              marketplace.
+            </p>
+
+            <p className="mt-4 text-base leading-8 text-[#6f625c]">
+              Our focus begins with sarees because they represent one of the
+              most diverse and enduring parts of Indian fashion. Over time, our
+              vision is to create a broader marketplace for Indian clothing,
+              ethnic fashion, accessories, and related products.
             </p>
 
             <div className="mt-8 space-y-4">
               <StoryPoint>
-                Making saree discovery easier and more enjoyable.
+                Make saree and Indian fashion discovery easier online.
               </StoryPoint>
 
               <StoryPoint>
-                Helping sellers showcase their collections online.
+                Give sellers and boutiques another way to reach customers.
               </StoryPoint>
 
               <StoryPoint>
-                Creating a marketplace built around trust and convenience.
+                Bring different Indian fashion collections together.
               </StoryPoint>
 
               <StoryPoint>
-                Celebrating the diversity of Indian fashion.
+                Support the growth of digital commerce for fashion businesses.
+              </StoryPoint>
+
+              <StoryPoint>
+                Celebrate India's diverse fashion traditions and craftsmanship.
               </StoryPoint>
             </div>
           </div>
@@ -278,56 +414,56 @@ export default function AboutUsPage() {
       </section>
 
       {/* =========================================================
-      VALUES
-  ========================================================= */}
+      WHY MYSMME
+      ========================================================= */}
 
       <section className="mx-auto max-w-7xl px-6 py-20 lg:px-8 lg:py-24">
         <div className="text-center">
           <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-[#a51c30]">
-            What We Believe
+            Why MYSMME?
           </p>
 
           <h2 className="mt-4 text-3xl font-extrabold tracking-tight text-[#241b18] sm:text-4xl">
-            Built around people, products & trust.
+            More than an online store.
           </h2>
 
-          <p className="mx-auto mt-5 max-w-2xl text-base leading-7 text-[#6f625c]">
-            We do not want MYSMME to feel like just another online store. Our
-            goal is to create an ecosystem where customers, sellers, creators,
-            and businesses can grow together.
+          <p className="mx-auto mt-5 max-w-3xl text-base leading-7 text-[#6f625c]">
+            MYSMME is being developed as a marketplace ecosystem for customers
+            and Indian fashion businesses. The goal is to make discovery easier
+            for shoppers while creating more opportunities for sellers.
           </p>
         </div>
 
         <div className="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
           <ValueCard
             icon={<Heart className="h-5 w-5" />}
-            title="Passion"
-            text="We appreciate the artistry, culture, craftsmanship, and beauty behind Indian fashion."
+            title="Indian Fashion"
+            text="We are focused on the beauty, diversity, craftsmanship, and evolving style of Indian fashion."
           />
 
           <ValueCard
             icon={<Users className="h-5 w-5" />}
             title="Community"
-            text="Customers, sellers, creators, and businesses are all part of the marketplace we are building."
+            text="Customers, sellers, boutiques, designers, and fashion businesses are all part of the marketplace."
           />
 
           <ValueCard
             icon={<ShieldCheck className="h-5 w-5" />}
             title="Trust"
-            text="A marketplace becomes meaningful when customers and sellers can rely on the experience."
+            text="We believe a successful marketplace should provide a clear, dependable, and convenient shopping experience."
           />
 
           <ValueCard
-            icon={<PackageCheck className="h-5 w-5" />}
-            title="Experience"
-            text="Every part of MYSMME is designed to make discovering and buying products simpler."
+            icon={<Sparkles className="h-5 w-5" />}
+            title="Discovery"
+            text="Our goal is to help shoppers discover products and sellers they may not find through traditional shopping alone."
           />
         </div>
       </section>
 
       {/* =========================================================
-      DARK MARKETPLACE SECTION
-  ========================================================= */}
+      FOR CUSTOMERS + SELLERS
+      ========================================================= */}
 
       <section className="relative overflow-hidden bg-[#241b18] text-white">
         <div className="absolute -left-40 top-0 h-[400px] w-[400px] rounded-full bg-[#a51c30]/20 blur-[120px]" />
@@ -336,18 +472,22 @@ export default function AboutUsPage() {
         <div className="relative mx-auto grid max-w-7xl gap-12 px-6 py-20 lg:grid-cols-2 lg:px-8 lg:py-24">
           <div>
             <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-[#e6bd72]">
-              More Than Shopping
+              For Customers & Sellers
             </p>
 
             <h2 className="mt-4 max-w-xl text-3xl font-extrabold tracking-tight sm:text-4xl">
-              A place where Indian fashion can grow.
+              A marketplace where both sides can grow.
             </h2>
 
             <p className="mt-6 max-w-xl text-base leading-8 text-white/65">
-              MYSMME is designed to bring customers and sellers onto one
-              marketplace. Whether you are searching for your next saree or
-              building your fashion business, we want the platform to work for
-              you.
+              Customers want choice, discovery, convenience, and confidence when
+              shopping online. Sellers want visibility, reach, and a digital
+              platform for their products.
+            </p>
+
+            <p className="mt-4 max-w-xl text-base leading-8 text-white/65">
+              MYSMME is designed to bring these needs together through one
+              marketplace focused on Indian fashion.
             </p>
 
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
@@ -372,25 +512,25 @@ export default function AboutUsPage() {
             <DarkFeature
               icon={<ShoppingBag className="h-5 w-5" />}
               title="For Customers"
-              text="Discover products from different sellers in one convenient marketplace."
+              text="Discover sarees and Indian fashion products from different sellers in one marketplace."
             />
 
             <DarkFeature
               icon={<Store className="h-5 w-5" />}
               title="For Sellers"
-              text="Showcase your products and reach customers through a digital storefront."
+              text="Create a digital presence, showcase products, and connect with customers beyond your local market."
             />
 
             <DarkFeature
               icon={<MapPin className="h-5 w-5" />}
               title="Indian Fashion"
-              text="Celebrate styles, traditions, and products from different parts of India."
+              text="Explore styles, traditions, textiles, and products representing India's diverse fashion culture."
             />
 
             <DarkFeature
               icon={<Sparkles className="h-5 w-5" />}
-              title="Always Evolving"
-              text="We continue improving the marketplace as our customers and sellers grow."
+              title="Growing Marketplace"
+              text="MYSMME continues to evolve as more customers, sellers, and Indian fashion businesses join the platform."
             />
           </div>
         </div>
@@ -398,7 +538,7 @@ export default function AboutUsPage() {
 
       {/* =========================================================
       FOUNDER
-  ========================================================= */}
+      ========================================================= */}
 
       <section className="mx-auto max-w-7xl px-6 py-20 lg:px-8 lg:py-24">
         <div className="overflow-hidden rounded-[2rem] border border-[#eadfd6] bg-white shadow-xl shadow-[#6f5145]/5">
@@ -407,7 +547,7 @@ export default function AboutUsPage() {
             <div className="relative min-h-[420px] bg-[#f3e5db]">
               <Image
                 src="/images/sandeep-kumar.jpg"
-                alt="Sandeep Kumar - Founder of MYSMME"
+                alt="Sandeep Kumar, Founder of MYSMME"
                 fill
                 className="object-cover"
                 sizes="(max-width: 1024px) 100vw, 40vw"
@@ -420,7 +560,7 @@ export default function AboutUsPage() {
 
                 <p className="mt-1 text-xl font-bold">Sandeep Kumar</p>
 
-                <p className="mt-1 text-sm text-white/65">Building MYSMME</p>
+                <p className="mt-1 text-sm text-white/65">Founder of MYSMME</p>
               </div>
             </div>
 
@@ -431,19 +571,25 @@ export default function AboutUsPage() {
               </p>
 
               <h2 className="mt-4 max-w-2xl text-3xl font-extrabold tracking-tight text-[#241b18] sm:text-4xl">
-                Building MYSMME with a vision for modern Indian commerce.
+                Building a digital marketplace for Indian fashion.
               </h2>
 
               <p className="mt-6 max-w-2xl text-base leading-8 text-[#6f625c]">
-                MYSMME is built on a simple belief: technology should help
-                businesses reach more people while making shopping easier, more
-                transparent, and more enjoyable for customers.
+                MYSMME is built around a straightforward idea: technology can
+                help Indian fashion businesses reach more customers while making
+                product discovery easier for shoppers.
               </p>
 
               <p className="mt-4 max-w-2xl text-base leading-8 text-[#6f625c]">
-                The vision is to create a marketplace that brings together
-                products, sellers, customers, and the rich heritage of Indian
-                fashion in one digital ecosystem.
+                The long-term vision is to create a marketplace that connects
+                customers, sellers, boutiques, designers, and Indian fashion
+                businesses in one digital ecosystem.
+              </p>
+
+              <p className="mt-4 max-w-2xl text-base leading-8 text-[#6f625c]">
+                Starting with sarees and expanding into broader Indian fashion,
+                MYSMME aims to combine the reach of modern technology with the
+                heritage and diversity of India's fashion industry.
               </p>
 
               <div className="mt-8 rounded-2xl border border-[#eadfd6] bg-[#fbf4ef] p-5">
@@ -493,8 +639,58 @@ export default function AboutUsPage() {
       </section>
 
       {/* =========================================================
+      FAQ / INDEXABLE CONTENT
+      ========================================================= */}
+
+      <section className="border-t border-[#eadfd6] bg-[#fbf4ef]">
+        <div className="mx-auto max-w-4xl px-6 py-20 lg:px-8 lg:py-24">
+          <div className="text-center">
+            <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-[#a51c30]">
+              Frequently Asked Questions
+            </p>
+
+            <h2 className="mt-4 text-3xl font-extrabold tracking-tight text-[#241b18] sm:text-4xl">
+              About MYSMME
+            </h2>
+          </div>
+
+          <div className="mt-12 space-y-4">
+            <FaqItem
+              question="What is MYSMME?"
+              answer="MYSMME is an Indian fashion marketplace connecting customers with saree sellers, boutiques, designers, and fashion businesses. The platform is designed to make it easier to discover and shop for sarees and other Indian fashion products online."
+            />
+
+            <FaqItem
+              question="What can I buy on MYSMME?"
+              answer="MYSMME focuses on sarees and Indian fashion. Customers can discover traditional sarees, contemporary saree styles, festive and wedding collections, everyday sarees, ethnic wear, and other fashion products offered by marketplace sellers."
+            />
+
+            <FaqItem
+              question="Is MYSMME a saree marketplace?"
+              answer="Yes. Sarees are a core focus of MYSMME. The marketplace is being built to help customers discover sarees from different sellers while giving saree businesses a digital platform to showcase their collections."
+            />
+
+            <FaqItem
+              question="Who can sell on MYSMME?"
+              answer="MYSMME is designed for saree sellers, boutiques, designers, retailers, independent sellers, and Indian fashion businesses that want to showcase their products and reach customers through an online marketplace."
+            />
+
+            <FaqItem
+              question="Why was MYSMME created?"
+              answer="MYSMME was created to make Indian fashion easier to discover online and to help sellers reach customers beyond their immediate local markets. The broader vision is to build a digital ecosystem around Indian fashion and commerce."
+            />
+
+            <FaqItem
+              question="Where can I explore MYSMME products?"
+              answer="Customers can browse available products and collections through the MYSMME marketplace. Visit the products section to explore the current range of sarees and Indian fashion products."
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* =========================================================
       FINAL CTA
-  ========================================================= */}
+      ========================================================= */}
 
       <section className="border-t border-[#eadfd6] bg-[#f8eee7]">
         <div className="relative mx-auto max-w-4xl overflow-hidden px-6 py-20 text-center lg:py-24">
@@ -510,12 +706,12 @@ export default function AboutUsPage() {
             </p>
 
             <h2 className="mt-3 text-3xl font-extrabold tracking-tight text-[#241b18] sm:text-4xl">
-              Your next saree might be waiting for you.
+              Discover your next saree.
             </h2>
 
             <p className="mx-auto mt-4 max-w-2xl text-base leading-7 text-[#6f625c]">
-              Explore collections, discover sellers, and find something that
-              feels uniquely yours.
+              Explore Indian sarees, discover new sellers, and find fashion
+              collections that match your style and occasion.
             </p>
 
             <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
@@ -528,10 +724,10 @@ export default function AboutUsPage() {
               </Link>
 
               <Link
-                href="/"
+                href="/seller"
                 className="inline-flex items-center justify-center rounded-xl border border-[#d8c8bd] bg-white px-7 py-3.5 text-sm font-bold text-[#4e403a] transition hover:border-[#a51c30] hover:text-[#a51c30]"
               >
-                Back to Home
+                Sell on MYSMME
               </Link>
             </div>
           </div>
@@ -571,7 +767,7 @@ function BrandStat({
 }) {
   return (
     <div className="flex items-center gap-3 px-3 py-2 sm:px-6">
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-[#a51c30] shadow-sm">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#fff2ed] text-[#a51c30] shadow-sm">
         {icon}
       </div>
 
@@ -606,6 +802,60 @@ function InfoCard({
       <h3 className="mt-5 text-lg font-bold text-[#241b18]">{title}</h3>
 
       <p className="mt-2 text-sm leading-6 text-[#756860]">{description}</p>
+    </div>
+  );
+}
+
+/* =========================================================
+FASHION CATEGORY
+========================================================= */
+
+function FashionCategory({ title, text }: { title: string; text: string }) {
+  return (
+    <div className="rounded-2xl border border-[#eadfd6] bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
+      <div className="flex items-start gap-3">
+        <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#fff2ed] text-[#a51c30]">
+          <CheckCircle2 className="h-4 w-4" />
+        </div>
+
+        <div>
+          <h3 className="font-bold text-[#241b18]">{title}</h3>
+
+          <p className="mt-1.5 text-sm leading-6 text-[#756860]">{text}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* =========================================================
+STEP CARD
+========================================================= */
+
+function StepCard({
+  number,
+  icon,
+  title,
+  text,
+}: {
+  number: string;
+  icon: React.ReactNode;
+  title: string;
+  text: string;
+}) {
+  return (
+    <div className="relative rounded-2xl border border-[#eadfd6] bg-white p-7 shadow-sm transition hover:-translate-y-1 hover:shadow-xl">
+      <div className="flex items-center justify-between">
+        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#fff2ed] text-[#a51c30]">
+          {icon}
+        </div>
+
+        <span className="text-3xl font-black text-[#a51c30]/10">{number}</span>
+      </div>
+
+      <h3 className="mt-6 text-lg font-bold text-[#241b18]">{title}</h3>
+
+      <p className="mt-2 text-sm leading-7 text-[#756860]">{text}</p>
     </div>
   );
 }
@@ -673,5 +923,29 @@ function DarkFeature({
 
       <p className="mt-2 text-sm leading-6 text-white/55">{text}</p>
     </div>
+  );
+}
+
+/* =========================================================
+FAQ ITEM
+========================================================= */
+
+function FaqItem({ question, answer }: { question: string; answer: string }) {
+  return (
+    <details className="group rounded-2xl border border-[#eadfd6] bg-white p-5 shadow-sm">
+      <summary className="cursor-pointer list-none pr-8 font-bold text-[#241b18] marker:hidden">
+        <div className="flex items-center justify-between gap-4">
+          <span>{question}</span>
+
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#fff2ed] text-[#a51c30] transition group-open:rotate-45">
+            +
+          </span>
+        </div>
+      </summary>
+
+      <p className="mt-4 border-t border-[#eadfd6] pt-4 text-sm leading-7 text-[#6f625c]">
+        {answer}
+      </p>
+    </details>
   );
 }
