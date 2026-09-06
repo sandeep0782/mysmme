@@ -28,6 +28,8 @@ import logisticsRoutes from "./routes/LogisticsRoutes";
 import campaignRoutes from "./routes/campaignRoutes";
 import reelRoutes from "./routes/reelRoutes";
 import { robotsTxt } from "./robots";
+import { importUsersFromExcel } from "./controllers/importUserController";
+import userImportRoutes from "./routes/userImportRoutes";
 
 // Load environment variables BEFORE importing/starting
 // anything that depends on process.env.
@@ -155,6 +157,7 @@ app.use("/api/logistics", logisticsRoutes);
 app.use("/api/campaigns", campaignRoutes);
 
 app.use("/api/reels", reelRoutes);
+app.use("/api/users", userImportRoutes);
 
 // -----------------------------------------------------
 // Start server

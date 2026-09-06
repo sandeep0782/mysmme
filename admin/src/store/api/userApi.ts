@@ -22,6 +22,8 @@ const API_URLS = {
 
   UPDATE_USER_PROFILE: (userId: string) =>
     `${BASE_URL}/users/profile/update/${userId}`,
+
+  IMPORT_USERS: `${BASE_URL}/users/import`,
 };
 
 export const userApi = api.injectEndpoints({
@@ -126,6 +128,21 @@ export const userApi = api.injectEndpoints({
       }),
       invalidatesTags: ["User"],
     }),
+
+    importUsersFromExcel: builder.mutation({
+      query: (file: File) => {
+        const formData = new FormData();
+
+        formData.append("file", file);
+
+        return {
+          url: API_URLS.IMPORT_USERS,
+          method: "POST",
+          body: formData,
+        };
+      },
+      invalidatesTags: ["User"],
+    }),
   }),
 });
 
@@ -143,4 +160,6 @@ export const {
   useAddUserMutation,
   useUpdateSingleUserMutation,
   useDeleteUserMutation,
+
+  useImportUsersFromExcelMutation,
 } = userApi;

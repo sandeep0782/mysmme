@@ -11,6 +11,8 @@ import {
   Loader2,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
+import { useImportUsersFromExcelMutation } from "@/store/api/userApi";
+import { useRouter } from "next/navigation";
 
 type ExcelRow = Record<string, any>;
 
@@ -28,7 +30,10 @@ const Page = () => {
   const [users, setUsers] = useState<UserRow[]>([]);
   const [columns, setColumns] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
+  const [importUsersFromExcel, { isLoading: isImporting }] =
+    useImportUsersFromExcelMutation();
   // ============================================================
   // READ EXCEL FILE
   // ============================================================
@@ -173,50 +178,86 @@ const Page = () => {
   // ============================================================
 
   const importUsers = async () => {
+    if (!file) {
+      toast.error("Please select an Excel or CSV file.");
+      return;
+    }
+
     if (users.length === 0) {
       toast.error("No users available to import.");
       return;
     }
 
+    const invalidUsers = users.filter(
+      (user) => !user.name.trim() || !user.email.trim(),
+    );
+
+    if (invalidUsers.length > 0) {
+      toast.error(
+        `${invalidUsers.length} user${
+          invalidUsers.length === 1 ? "" : "s"
+        } have missing name or email.`,
+      );
+      return;
+    }
+
     try {
-      setLoading(true);
+      console.log("Uploading Excel file:", {
+        name: file.name,
+        size: file.size,
+        type: file.type,
+      });
 
-      console.log("Users ready for import:", users);
+      const response = await importUsersFromExcel(file).unwrap();
 
-      /*
-       * NEXT STEP:
-       *
-       * Send users to your backend.
-       *
-       * Example:
-       *
-       * const response = await fetch(
-       *   `${process.env.NEXT_PUBLIC_API_URL}/api/users/import`,
-       *   {
-       *     method: "POST",
-       *     headers: {
-       *       "Content-Type": "application/json",
-       *     },
-       *     credentials: "include",
-       *     body: JSON.stringify({
-       *       users,
-       *     }),
-       *   },
-       * );
-       *
-       * const result = await response.json();
-       *
-       * if (!response.ok) {
-       *   throw new Error(result.message || "Import failed");
-       * }
-       */
+      console.log("Import response:", response);
 
-      toast.success(`${users.length} users are ready to import.`);
-    } catch (error: any) {
-      console.error(error);
-      toast.error(error.message || "Import failed.");
-    } finally {
-      setLoading(false);
+      const importedCount = response?.summary?.imported ?? users.length;
+      const failedCount = response?.summary?.failed ?? 0;
+
+      if (failedCount > 0) {
+        toast.success(
+          `${importedCount} users imported. ${failedCount} rows failed.`,
+        );
+        clearFile();
+
+        router.push("/platform/admin/users");
+      } else {
+        toast.success(
+          response?.message || `${importedCount} users imported successfully.`,
+        );
+      }
+
+      clearFile();
+    } catch (error: unknown) {
+      console.error("User import failed:", error);
+
+      const apiError = error as {
+        data?: {
+          message?: string;
+          error?: string;
+          errors?: Array<{
+            row: number;
+            message: string;
+          }>;
+        };
+        error?: string;
+        status?: number | string;
+        message?: string;
+      };
+
+      console.error("Status:", apiError?.status);
+      console.error("Data:", apiError?.data);
+      console.error("Error:", apiError?.error);
+
+      const errorMessage =
+        apiError?.data?.message ||
+        apiError?.data?.error ||
+        apiError?.error ||
+        apiError?.message ||
+        "Failed to import users.";
+
+      toast.error(errorMessage);
     }
   };
 
@@ -506,11 +547,20 @@ const Page = () => {
                 <button
                   type="button"
                   onClick={importUsers}
-                  disabled={loading || users.length === 0}
+                  disabled={loading || isImporting || users.length === 0}
                   className="inline-flex h-11 items-center gap-2 rounded-xl bg-emerald-600 px-6 text-sm font-semibold text-white shadow-lg shadow-emerald-600/20 transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  <Upload className="h-4 w-4" />
-                  Import {users.length} Users
+                  {isImporting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Importing...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="h-4 w-4" />
+                      Import {users.length} Users
+                    </>
+                  )}
                 </button>
               </div>
             </div>
