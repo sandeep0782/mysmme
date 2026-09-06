@@ -24,7 +24,6 @@ import {
   WalletCards,
   X,
 } from "lucide-react";
-import { Metadata } from "next";
 
 type FAQ = {
   question: string;
@@ -370,16 +369,7 @@ const CATEGORIES = [
   "MYSMME vs MSME",
 ];
 
-export const metadata: Metadata = {
-  title: "FAQ",
-  description:
-    "Answers about MYSMME — how our saree marketplace works, shipping, returns, and how MYSMME differs from the Government MSME scheme.",
-  alternates: {
-    canonical: "/faq",
-  },
-};
-
-export default function FAQPage() {
+export default function FAQClient() {
   const [activeCategory, setActiveCategory] = useState("All");
   const [search, setSearch] = useState("");
   const [openFAQ, setOpenFAQ] = useState<number | null>(0);
