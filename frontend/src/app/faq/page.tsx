@@ -1,12 +1,29 @@
 import type { Metadata } from "next";
 import FAQClient from "./FAQClient";
-import { FAQS } from "./faq-data"; // see note below
+import { FAQS } from "./faq-data";
+
+const title = "FAQ";
+const fullTitle = "FAQ | MYSMME";
+const description =
+  "Answers about MYSMME — how our saree marketplace works, shipping, returns, and how MYSMME differs from the Government MSME scheme.";
 
 export const metadata: Metadata = {
-  title: "FAQ",
-  description:
-    "Answers about MYSMME — how our saree marketplace works, shipping, returns, and how MYSMME differs from the Government MSME scheme.",
-  alternates: { canonical: "/faq" },
+  title,
+  description,
+  alternates: {
+    canonical: "/faq",
+  },
+  openGraph: {
+    title: fullTitle,
+    description,
+    url: "/faq",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: fullTitle,
+    description,
+  },
 };
 
 const faqSchema = {
@@ -15,7 +32,10 @@ const faqSchema = {
   mainEntity: FAQS.map((f) => ({
     "@type": "Question",
     name: f.question,
-    acceptedAnswer: { "@type": "Answer", text: f.answer },
+    acceptedAnswer: {
+      "@type": "Answer",
+      text: f.answer,
+    },
   })),
 };
 
