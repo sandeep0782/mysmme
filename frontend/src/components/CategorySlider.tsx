@@ -14,7 +14,7 @@ const CategorySlider = () => {
   const directionRef = useRef(-1);
   const isHoveredRef = useRef(false);
 
-  const speed = 0.5;
+  const speed = 1.5;
 
   const {
     data: categories = [],
@@ -223,7 +223,7 @@ const CategorySlider = () => {
                     </div>
 
                     <h3 className="mt-4 text-sm font-semibold text-gray-800 transition-colors duration-300 group-hover:text-red-500 sm:text-base">
-                      {categoryName} Sarees
+                      {categoryName}
                     </h3>
                   </Link>
                 );
