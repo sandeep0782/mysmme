@@ -187,9 +187,7 @@ const CategorySlider = () => {
               {categories.map((category) => {
                 const categoryName = category.name?.trim();
 
-                const categoryUrl = `/sarees?category=${encodeURIComponent(
-                  category.slug,
-                )}`;
+                const categoryUrl = `/category/${encodeURIComponent(category.slug)}`;
 
                 return (
                   <Link
@@ -199,10 +197,6 @@ const CategorySlider = () => {
                     aria-label={`Shop ${categoryName} sarees`}
                     className="group w-28 flex-shrink-0 cursor-pointer text-center sm:w-32 md:w-36"
                   >
-                    {/* ==================================================
-                              CATEGORY IMAGE
-                    ================================================== */}
-
                     <div className="relative mx-auto h-24 w-24 overflow-hidden rounded-full border-4 border-white shadow-md transition-all duration-300 group-hover:shadow-xl sm:h-28 sm:w-28 md:h-32 md:w-32">
                       {category.image ? (
                         <Image
@@ -227,10 +221,6 @@ const CategorySlider = () => {
                         aria-hidden="true"
                       />
                     </div>
-
-                    {/* ==================================================
-                              CATEGORY NAME
-                    ================================================== */}
 
                     <h3 className="mt-4 text-sm font-semibold text-gray-800 transition-colors duration-300 group-hover:text-red-500 sm:text-base">
                       {categoryName} Sarees

@@ -2,8 +2,7 @@ import type { MetadataRoute } from "next";
 
 export const dynamic = "force-dynamic";
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://mysmme.com";
 const API_URL = process.env.API_URL || "http://mysmme-server:8000/api";
 
 type Product = {
@@ -57,6 +56,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
 
     {
+      url: `${SITE_URL}/brands`,
+      lastModified: now,
+      changeFrequency: "weekly",
+      priority: 0.8,
+    },
+
+    {
       url: `${SITE_URL}/about-us`,
       lastModified: now,
       changeFrequency: "monthly",
@@ -68,6 +74,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: now,
       changeFrequency: "monthly",
       priority: 0.7,
+    },
+
+    {
+      url: `${SITE_URL}/faq`,
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.6,
     },
 
     {
