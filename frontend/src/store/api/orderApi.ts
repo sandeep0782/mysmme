@@ -6,6 +6,7 @@ const API_URLS = {
   ORDERS_BY_ID: (orderId: string) => `${BASE_URL}/order/${orderId}`,
 
   CREATE_RAZORPAY_PAYMENT: `${BASE_URL}/order/payment-razorpay`,
+
 };
 
 export const orderApi = api.injectEndpoints({

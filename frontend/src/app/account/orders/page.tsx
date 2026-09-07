@@ -14,8 +14,10 @@ import {
   ChevronLeft,
   ChevronRight,
   Eye,
+  Download,
 } from "lucide-react";
 import NoData from "@/lib/NoData";
+import { downloadInvoice } from "@/lib/downloadInvoice";
 
 const ORDERS_PER_PAGE = 10;
 
@@ -79,6 +81,14 @@ export default function OrdersPage() {
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
+  };
+
+  const handleDownloadInvoice = async (orderId: string) => {
+    try {
+      await downloadInvoice(orderId);
+    } catch (error) {
+      console.error("Invoice download error:", error);
+    }
   };
 
   return (
@@ -171,6 +181,10 @@ export default function OrdersPage() {
                   Status
                 </th>
 
+                <th className="px-5 py-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
+                  Invoice
+                </th>
+
                 <th className="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-400">
                   Action
                 </th>
@@ -179,7 +193,11 @@ export default function OrdersPage() {
 
             <tbody className="divide-y divide-slate-100">
               {displayedOrders.map((order) => (
-                <OrderTableRow key={order._id} order={order} />
+                <OrderTableRow
+                  key={order._id}
+                  order={order}
+                  onDownloadInvoice={handleDownloadInvoice}
+                />
               ))}
             </tbody>
           </table>
@@ -281,7 +299,13 @@ export default function OrdersPage() {
 /* DESKTOP TABLE ROW                                         */
 /* ========================================================= */
 
-function OrderTableRow({ order }: { order: Order }) {
+function OrderTableRow({
+  order,
+  onDownloadInvoice,
+}: {
+  order: Order;
+  onDownloadInvoice: (orderId: string) => void;
+}) {
   const itemCount = order.items.length;
 
   const itemNames = order.items.map((item) => item.product.title).join(", ");
@@ -349,6 +373,23 @@ function OrderTableRow({ order }: { order: Order }) {
       {/* Status */}
       <td className="px-5 py-4">
         <OrderStatus status={order.status} />
+      </td>
+
+      <td className="px-5 py-4">
+        {order.status === "delivered" ? (
+          <Button
+            size="sm"
+            onClick={() => onDownloadInvoice(String(order._id))}
+            className="group h-9 gap-2 rounded-lg border border-pink-200 bg-gradient-to-r from-pink-500 to-rose-500 px-3.5 text-xs font-semibold text-white shadow-sm shadow-pink-200/50 transition-all duration-200 hover:-translate-y-0.5 hover:from-pink-600 hover:to-rose-600 hover:shadow-md hover:shadow-pink-200/60"
+          >
+            <Download className="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-y-0.5" />
+            Invoice
+          </Button>
+        ) : (
+          <span className="inline-flex items-center rounded-full bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-400">
+            NA{" "}
+          </span>
+        )}
       </td>
 
       {/* Action */}

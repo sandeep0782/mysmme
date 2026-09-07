@@ -30,6 +30,8 @@ export interface IOrder extends Document {
     | "delivered"
     | "cancelled";
   notes?: string;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 const orderItemSchema = new Schema<IOrderItem>(
