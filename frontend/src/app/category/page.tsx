@@ -2,9 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 
-export const dynamic = "force-dynamic";
-
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://mysmme.com";
 
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://api.mysmme.com:8000/api";
@@ -30,7 +28,10 @@ type ApiResponse<T> = {
 async function fetchCategories(): Promise<Category[]> {
   try {
     const response = await fetch(`${API_URL}/category`, {
-      cache: "no-store",
+      // Categories don't change second-to-second — cache for an hour.
+      // This also protects against a temporary API blip getting crawled
+      // and indexed as an empty "categories unavailable" page.
+      next: { revalidate: 3600 },
     });
 
     if (!response.ok) {
@@ -58,10 +59,14 @@ async function fetchCategories(): Promise<Category[]> {
    SEO METADATA
 ============================================================ */
 
+const title = "Saree Categories";
+const fullTitle = "Saree Categories | Shop Sarees by Style, Fabric & Tradition";
+const description =
+  "Explore saree categories at MYSMME. Discover beautiful silk, traditional, designer and contemporary sarees by style, fabric and tradition for weddings, festivals and everyday wear.";
+
 export const metadata: Metadata = {
-  title: "Saree Categories | Shop Sarees by Style, Fabric & Tradition",
-  description:
-    "Explore saree categories at MySMMe. Discover beautiful silk, traditional, designer and contemporary sarees by style, fabric and tradition for weddings, festivals and everyday wear.",
+  title: fullTitle,
+  description,
   keywords: [
     "saree categories",
     "sarees by category",
@@ -72,22 +77,22 @@ export const metadata: Metadata = {
     "Indian sarees",
     "saree collection",
     "women sarees",
-    "MySMMe sarees",
+    "MYSMME sarees",
   ],
   alternates: {
-    canonical: `${SITE_URL}/category`,
+    canonical: "/category",
   },
   openGraph: {
-    title: "Saree Categories | Shop Sarees by Style, Fabric & Tradition",
+    title: fullTitle,
     description:
-      "Explore beautiful saree collections by category, style, fabric and tradition at MySMMe.",
-    url: `${SITE_URL}/category`,
+      "Explore beautiful saree collections by category, style, fabric and tradition at MYSMME.",
+    url: "/category",
     type: "website",
-    siteName: "MySMMe",
+    siteName: "MYSMME",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Saree Categories | MySMMe",
+    title: "Saree Categories | MYSMME",
     description:
       "Explore beautiful sarees by category, fabric, style and tradition.",
   },
@@ -125,7 +130,7 @@ function CategoryStructuredData({ categories }: { categories: Category[] }) {
         isPartOf: {
           "@type": "WebSite",
           url: SITE_URL,
-          name: "MySMMe",
+          name: "MYSMME",
         },
       },
       {
@@ -134,6 +139,23 @@ function CategoryStructuredData({ categories }: { categories: Category[] }) {
         name: "Saree Categories",
         numberOfItems: categories.length,
         itemListElement: itemList,
+      },
+      {
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          {
+            "@type": "ListItem",
+            position: 1,
+            name: "Home",
+            item: SITE_URL,
+          },
+          {
+            "@type": "ListItem",
+            position: 2,
+            name: "Saree Categories",
+            item: `${SITE_URL}/category`,
+          },
+        ],
       },
     ],
   };
