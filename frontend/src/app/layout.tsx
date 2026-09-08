@@ -14,7 +14,7 @@ const figtree = Figtree({
   variable: "--font-figtree",
 });
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.mysmme.com";
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://mysmme.com";
 
 const siteName = "MYSMME";
 
