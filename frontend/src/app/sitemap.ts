@@ -155,6 +155,20 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.3,
     },
 
+    {
+      url: `${SITE_URL}/careers`,
+      lastModified: now,
+      changeFrequency: "yearly",
+      priority: 0.3,
+    },
+
+    {
+      url: `${SITE_URL}/partners`,
+      lastModified: now,
+      changeFrequency: "yearly",
+      priority: 0.3,
+    },
+
     // ============================================================
     // CATEGORY DETAIL PAGES
     // /category/[slug]

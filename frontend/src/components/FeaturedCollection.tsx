@@ -323,8 +323,6 @@ const FeaturedCollection = () => {
                               src={collection.image || FALLBACK_IMAGE}
                               alt={`${collection.name} Sarees`}
                               fill
-                              priority={slideIndex === 0}
-                              loading={slideIndex === 0 ? "eager" : "lazy"}
                               sizes="
     (min-width: 1280px) 25vw,
     (min-width: 1024px) 33vw,
@@ -462,86 +460,23 @@ const FeaturedCollection = () => {
           {/* ======================================================
               PREVIOUS / NEXT BUTTONS
           ====================================================== */}
-
           {totalSlides > 1 && (
-            <>
-              {/* Previous */}
+            <div className="mt-6 flex justify-center" aria-live="polite">
+              <div className="rounded-full bg-white px-5 py-2 text-sm font-semibold text-gray-600 shadow-sm">
+                <span className="text-red-500">{currentSlide + 1}</span>
 
-              <button
-                type="button"
-                onClick={prevSlide}
-                aria-label="Previous collections"
-                className="
-                  absolute
-                  left-1
-                  top-1/2
-                  z-20
-                  flex
-                  h-9
-                  w-9
-                  -translate-y-1/2
-                  items-center
-                  justify-center
-                  rounded-full
-                  bg-white/95
-                  text-gray-900
-                  shadow-lg
-                  transition-all
-                  duration-300
-                  hover:bg-red-500
-                  hover:text-white
-                  focus:outline-none
+                <span className="mx-2 text-gray-300">/</span>
 
-                  sm:left-2
-                  sm:h-10
-                  sm:w-10
-                "
-              >
-                <span aria-hidden="true">&#10094;</span>
-              </button>
-
-              {/* Next */}
-
-              <button
-                type="button"
-                onClick={nextSlide}
-                aria-label="Next collections"
-                className="
-                  absolute
-                  right-1
-                  top-1/2
-                  z-20
-                  flex
-                  h-9
-                  w-9
-                  -translate-y-1/2
-                  items-center
-                  justify-center
-                  rounded-full
-                  bg-white/95
-                  text-gray-900
-                  shadow-lg
-                  transition-all
-                  duration-300
-                  hover:bg-red-500
-                  hover:text-white
-                  focus:outline-none
-
-                  sm:right-2
-                  sm:h-10
-                  sm:w-10
-                "
-              >
-                <span aria-hidden="true">&#10095;</span>
-              </button>
-            </>
+                <span>{totalSlides}</span>
+              </div>
+            </div>
           )}
 
           {/* ======================================================
               DOTS
           ====================================================== */}
 
-          {totalSlides > 1 && (
+          {/* {totalSlides > 1 && (
             <div className="mt-6 flex justify-center gap-2">
               {Array.from({
                 length: totalSlides,
@@ -567,7 +502,7 @@ const FeaturedCollection = () => {
                 />
               ))}
             </div>
-          )}
+          )} */}
         </div>
       </div>
     </section>

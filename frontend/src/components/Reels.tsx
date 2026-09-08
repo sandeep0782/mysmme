@@ -1,14 +1,11 @@
 "use client";
 
 import {
-  ArrowUpRight,
   ChevronLeft,
   ChevronRight,
   Heart,
   Maximize2,
   Share2,
-  Volume2,
-  VolumeX,
   X,
 } from "lucide-react";
 
@@ -18,96 +15,72 @@ import { useEffect, useRef, useState } from "react";
    REELS DATA
 ========================================================= */
 
-const reels = [
+const allReels = [
   {
     id: "3k97PfKYFP8",
     title: "Elegant Saree Look",
     subtitle: "Timeless elegance for every occasion",
-    product: "Featured Saree",
-    price: "₹4,999",
   },
   {
     id: "ehMaEJtqVlo",
     title: "Festive Edit",
     subtitle: "Make every celebration special",
-    product: "Festive Saree",
-    price: "₹3,999",
   },
   {
     id: "K3qL6tEO4-0",
     title: "Style Inspiration",
     subtitle: "Traditional beauty, modern styling",
-    product: "Designer Saree",
-    price: "₹3,499",
   },
   {
     id: "1D2ghhMqttc",
     title: "New Arrivals",
     subtitle: "Fresh styles you'll love",
-    product: "New Collection",
-    price: "₹2,999",
   },
   {
     id: "MD6dVpyJbbU",
     title: "Graceful Drapes",
     subtitle: "Effortless elegance in every drape",
-    product: "Signature Saree",
-    price: "₹4,499",
   },
   {
     id: "vuoJDIrCiaQ",
     title: "Classic Beauty",
     subtitle: "A timeless look for every celebration",
-    product: "Classic Collection",
-    price: "₹3,999",
   },
   {
     id: "TmmPQXXC13Q",
     title: "Festive Glam",
     subtitle: "Perfect looks for special moments",
-    product: "Festive Collection",
-    price: "₹4,299",
   },
   {
     id: "09SJZ_LyB34",
     title: "Saree Styling",
     subtitle: "Simple styling, beautiful results",
-    product: "Style Edit",
-    price: "₹3,799",
   },
   {
     id: "cKzG_qXLzv8",
     title: "Modern Tradition",
     subtitle: "Where contemporary meets tradition",
-    product: "Modern Sarees",
-    price: "₹4,599",
   },
   {
     id: "MDpxq8iN8ic",
     title: "Everyday Elegance",
     subtitle: "Beautiful styles for every day",
-    product: "Everyday Collection",
-    price: "₹2,999",
   },
   {
     id: "_hUykpprRWY",
     title: "The Saree Edit",
     subtitle: "Discover your next favourite look",
-    product: "Latest Collection",
-    price: "₹3,999",
   },
 ];
 
+/*
+ * Keep the homepage light.
+ * We can later create a dedicated /reels page for all videos.
+ */
+const reels = allReels.slice(0, 6);
+
 /* =========================================================
    YOUTUBE URL
-
-   IMPORTANT:
-   controls=0
-   autoplay=1
-   loop=1
-   playlist=id
-
-   playlist is required for YouTube looping.
 ========================================================= */
 
 function getYouTubeUrl(id: string) {
@@ -120,15 +93,9 @@ function getYouTubeUrl(id: string) {
     iv_load_policy: "3",
     cc_load_policy: "0",
     rel: "0",
-    modestbranding: "1",
     playsinline: "1",
-
-    // Loop this exact video
     loop: "1",
     playlist: id,
-
-    // Do not show video annotations
-    showinfo: "0",
   });
 
   if (typeof window !== "undefined") {
@@ -140,19 +107,14 @@ function getYouTubeUrl(id: string) {
 
 /* =========================================================
    VIDEO
-
-   No YouTube API.
-   No YT.Player.
-   No play/pause handling.
-   The iframe handles autoplay + loop itself.
 ========================================================= */
 
-function ReelVideo({ id }: { id: string }) {
+function ReelVideo({ id, title }: { id: string; title: string }) {
   return (
     <div className="absolute inset-0 overflow-hidden bg-neutral-200">
       <iframe
         src={getYouTubeUrl(id)}
-        title="Saree reel"
+        title={title}
         loading="lazy"
         tabIndex={-1}
         allow="autoplay; encrypted-media"
@@ -170,8 +132,8 @@ function ReelVideo({ id }: { id: string }) {
         "
       />
 
-      {/* Invisible layer prevents iframe interaction */}
-      <div className="absolute inset-0 z-10" />
+      {/* Prevent direct YouTube iframe interaction */}
+      <div className="absolute inset-0 z-10" aria-hidden="true" />
     </div>
   );
 }
@@ -188,36 +150,13 @@ function ReelCard({
   onOpen: () => void;
 }) {
   const [liked, setLiked] = useState(false);
-  const [muted, setMuted] = useState(true);
 
-  /*
-   * NOTE:
-   * Because the iframe itself is pointer-events-none,
-   * YouTube controls cannot be clicked.
-   *
-   * The UI buttons belong to our application.
-   */
-
-  const toggleLike = (event: React.MouseEvent) => {
+  const toggleLike = (event: React.MouseEvent<HTMLButtonElement>) => {
     event.stopPropagation();
-
     setLiked((value) => !value);
   };
 
-  const toggleMute = (event: React.MouseEvent) => {
-    event.stopPropagation();
-
-    /*
-     * A YouTube iframe cannot reliably be unmuted without
-     * communicating with the YouTube player API.
-     *
-     * We therefore keep the visual button here but the
-     * video remains muted for reliable autoplay.
-     */
-    setMuted((value) => !value);
-  };
-
-  const shareReel = async (event: React.MouseEvent) => {
+  const shareReel = async (event: React.MouseEvent<HTMLButtonElement>) => {
     event.stopPropagation();
 
     const url = `https://www.youtube.com/shorts/${reel.id}`;
@@ -233,7 +172,7 @@ function ReelCard({
         await navigator.clipboard.writeText(url);
       }
     } catch {
-      // User cancelled share.
+      // User cancelled share or sharing was unavailable.
     }
   };
 
@@ -254,23 +193,18 @@ function ReelCard({
         hover:shadow-[0_15px_40px_rgba(0,0,0,0.12)]
       "
     >
-      {/* =================================================
-          VIDEO
-      ================================================= */}
+      {/* VIDEO */}
 
-      <ReelVideo id={reel.id} />
+      <ReelVideo id={reel.id} title={reel.title} />
 
-      {/* =================================================
-          TOP ACTIONS
-      ================================================= */}
+      {/* TOP ACTIONS */}
 
       <div className="absolute right-2.5 top-2.5 z-40 flex gap-1.5">
-        {/* LIKE */}
-
         <button
           type="button"
           onClick={toggleLike}
-          aria-label="Like reel"
+          aria-label={liked ? "Unlike reel" : "Like reel"}
+          aria-pressed={liked}
           className={`
             flex
             h-8
@@ -290,38 +224,13 @@ function ReelCard({
           <Heart size={14} fill={liked ? "currentColor" : "none"} />
         </button>
 
-        {/* MUTE */}
-
-        <button
-          type="button"
-          onClick={toggleMute}
-          aria-label={muted ? "Turn sound on" : "Mute sound"}
-          className="
-            flex
-            h-8
-            w-8
-            items-center
-            justify-center
-            rounded-full
-            bg-black/25
-            text-white
-            backdrop-blur-md
-            transition
-            hover:bg-black/45
-          "
-        >
-          {muted ? <VolumeX size={14} /> : <Volume2 size={14} />}
-        </button>
-
-        {/* FULLSCREEN */}
-
         <button
           type="button"
           onClick={(event) => {
             event.stopPropagation();
             onOpen();
           }}
-          aria-label="Open reel"
+          aria-label={`Open ${reel.title}`}
           className="
             flex
             h-8
@@ -340,18 +249,16 @@ function ReelCard({
         </button>
       </div>
 
-      {/* =================================================
-          SHARE
-      ================================================= */}
+      {/* SHARE */}
 
       <button
         type="button"
         onClick={shareReel}
-        aria-label="Share reel"
+        aria-label={`Share ${reel.title}`}
         className="
           absolute
-          right-2.5
           bottom-24
+          right-2.5
           z-40
           flex
           h-8
@@ -370,9 +277,7 @@ function ReelCard({
         <Share2 size={14} />
       </button>
 
-      {/* =================================================
-          GRADIENT
-      ================================================= */}
+      {/* GRADIENT */}
 
       <div
         className="
@@ -387,11 +292,10 @@ function ReelCard({
           via-black/20
           to-transparent
         "
+        aria-hidden="true"
       />
 
-      {/* =================================================
-          CONTENT
-      ================================================= */}
+      {/* CONTENT */}
 
       <div
         className="
@@ -400,13 +304,13 @@ function ReelCard({
           inset-x-0
           bottom-0
           z-30
-          p-3.5
+          p-4
           text-white
         "
       >
         <p
           className="
-            text-[8px]
+            text-[9px]
             font-semibold
             uppercase
             tracking-[0.22em]
@@ -424,55 +328,41 @@ function ReelCard({
           {reel.subtitle}
         </p>
 
-        <div
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            onOpen();
+          }}
           className="
-            mt-2.5
-            flex
+            pointer-events-auto
+            mt-3
+            inline-flex
             items-center
-            justify-between
-            gap-2
-            rounded-lg
+            rounded-full
             border
-            border-white/15
+            border-white/25
             bg-white/10
-            p-2
-            backdrop-blur-lg
+            px-3
+            py-1.5
+            text-[11px]
+            font-medium
+            text-white
+            backdrop-blur-md
+            transition
+            hover:bg-white
+            hover:text-neutral-900
           "
         >
-          <div className="min-w-0">
-            <p className="truncate text-[10px] font-medium">{reel.product}</p>
-
-            <p className="mt-0.5 text-[9px] text-white/65">{reel.price}</p>
-          </div>
-
-          <button
-            type="button"
-            aria-label={`Shop ${reel.product}`}
-            className="
-              pointer-events-auto
-              flex
-              h-7
-              w-7
-              shrink-0
-              items-center
-              justify-center
-              rounded-full
-              bg-white
-              text-black
-              transition
-              hover:bg-white/90
-            "
-          >
-            <ArrowUpRight size={13} />
-          </button>
-        </div>
+          Watch Reel
+        </button>
       </div>
     </article>
   );
 }
 
 /* =========================================================
-   FULLSCREEN
+   FULLSCREEN VIEWER
 ========================================================= */
 
 function FullscreenViewer({
@@ -505,11 +395,11 @@ function FullscreenViewer({
       }
 
       if (event.key === "ArrowLeft") {
-        previous();
+        setCurrent((value) => (value - 1 + reels.length) % reels.length);
       }
 
       if (event.key === "ArrowRight") {
-        next();
+        setCurrent((value) => (value + 1) % reels.length);
       }
     };
 
@@ -521,7 +411,7 @@ function FullscreenViewer({
   }, [onClose]);
 
   /* =======================================================
-     LOCK BODY
+     LOCK BODY SCROLL
   ======================================================= */
 
   useEffect(() => {
@@ -545,13 +435,16 @@ function FullscreenViewer({
         justify-center
         bg-black
       "
+      role="dialog"
+      aria-modal="true"
+      aria-label={`${reel.title} video`}
     >
       {/* CLOSE */}
 
       <button
         type="button"
         onClick={onClose}
-        aria-label="Close"
+        aria-label="Close reel"
         className="
           absolute
           right-4
@@ -566,67 +459,83 @@ function FullscreenViewer({
           bg-white/10
           text-white
           backdrop-blur-md
+          transition
           hover:bg-white/20
+          focus:outline-none
+          focus:ring-2
+          focus:ring-white
         "
       >
         <X size={19} />
       </button>
 
-      {/* PREVIOUS */}
+      {/* DESKTOP PREVIOUS */}
 
-      <button
-        type="button"
-        onClick={previous}
-        aria-label="Previous reel"
-        className="
-          absolute
-          left-5
-          top-1/2
-          z-50
-          hidden
-          h-12
-          w-12
-          -translate-y-1/2
-          items-center
-          justify-center
-          rounded-full
-          bg-white/10
-          text-white
-          backdrop-blur-md
-          hover:bg-white/20
-          md:flex
-        "
-      >
-        <ChevronLeft size={25} />
-      </button>
+      {reels.length > 1 && (
+        <button
+          type="button"
+          onClick={previous}
+          aria-label="Previous reel"
+          className="
+            absolute
+            left-5
+            top-1/2
+            z-50
+            hidden
+            h-12
+            w-12
+            -translate-y-1/2
+            items-center
+            justify-center
+            rounded-full
+            bg-white/10
+            text-white
+            backdrop-blur-md
+            transition
+            hover:bg-white/20
+            focus:outline-none
+            focus:ring-2
+            focus:ring-white
+            md:flex
+          "
+        >
+          <ChevronLeft size={25} />
+        </button>
+      )}
 
-      {/* NEXT */}
+      {/* DESKTOP NEXT */}
 
-      <button
-        type="button"
-        onClick={next}
-        aria-label="Next reel"
-        className="
-          absolute
-          right-5
-          top-1/2
-          z-50
-          hidden
-          h-12
-          w-12
-          -translate-y-1/2
-          items-center
-          justify-center
-          rounded-full
-          bg-white/10
-          text-white
-          backdrop-blur-md
-          hover:bg-white/20
-          md:flex
-        "
-      >
-        <ChevronRight size={25} />
-      </button>
+      {reels.length > 1 && (
+        <button
+          type="button"
+          onClick={next}
+          aria-label="Next reel"
+          className="
+            absolute
+            right-5
+            top-1/2
+            z-50
+            hidden
+            h-12
+            w-12
+            -translate-y-1/2
+            items-center
+            justify-center
+            rounded-full
+            bg-white/10
+            text-white
+            backdrop-blur-md
+            transition
+            hover:bg-white/20
+            focus:outline-none
+            focus:ring-2
+            focus:ring-white
+            md:flex
+          "
+        >
+          <ChevronRight size={25} />
+        </button>
+      )}
 
       {/* VIDEO */}
 
@@ -662,69 +571,79 @@ function FullscreenViewer({
           "
         />
 
-        {/* BLOCK ALL YOUTUBE INTERACTION */}
-
-        <div className="absolute inset-0 z-20" />
+        <div className="absolute inset-0 z-20" aria-hidden="true" />
       </div>
 
-      {/* MOBILE NAV */}
+      {/* MOBILE NAVIGATION */}
 
-      <div
-        className="
-          absolute
-          bottom-5
-          left-1/2
-          z-50
-          flex
-          -translate-x-1/2
-          gap-3
-          md:hidden
-        "
-      >
-        <button
-          type="button"
-          onClick={previous}
-          aria-label="Previous"
+      {reels.length > 1 && (
+        <div
           className="
+            absolute
+            bottom-5
+            left-1/2
+            z-50
             flex
-            h-11
-            w-11
-            items-center
-            justify-center
-            rounded-full
-            bg-white/10
-            text-white
-            backdrop-blur-md
+            -translate-x-1/2
+            gap-3
+            md:hidden
           "
         >
-          <ChevronLeft size={18} />
-        </button>
+          <button
+            type="button"
+            onClick={previous}
+            aria-label="Previous reel"
+            className="
+              flex
+              h-11
+              w-11
+              items-center
+              justify-center
+              rounded-full
+              bg-white/10
+              text-white
+              backdrop-blur-md
+              transition
+              hover:bg-white/20
+              focus:outline-none
+              focus:ring-2
+              focus:ring-white
+            "
+          >
+            <ChevronLeft size={18} />
+          </button>
 
-        <button
-          type="button"
-          onClick={next}
-          aria-label="Next"
-          className="
-            flex
-            h-11
-            w-11
-            items-center
-            justify-center
-            rounded-full
-            bg-white/10
-            text-white
-            backdrop-blur-md
-          "
-        >
-          <ChevronRight size={18} />
-        </button>
-      </div>
+          <button
+            type="button"
+            onClick={next}
+            aria-label="Next reel"
+            className="
+              flex
+              h-11
+              w-11
+              items-center
+              justify-center
+              rounded-full
+              bg-white/10
+              text-white
+              backdrop-blur-md
+              transition
+              hover:bg-white/20
+              focus:outline-none
+              focus:ring-2
+              focus:ring-white
+            "
+          >
+            <ChevronRight size={18} />
+          </button>
+        </div>
+      )}
     </div>
   );
 }
 
 /* =========================================================
-   MAIN
+   MAIN COMPONENT
 ========================================================= */
 
 export default function Reels() {
@@ -745,7 +664,8 @@ export default function Reels() {
 
     if (!firstCard) return;
 
-    const gap = 20;
+    const styles = window.getComputedStyle(container);
+    const gap = Number.parseFloat(styles.columnGap || styles.gap) || 20;
 
     const distance = firstCard.offsetWidth + gap;
 
@@ -755,29 +675,15 @@ export default function Reels() {
     });
   };
 
-  /* =======================================================
-     END
-  ======================================================= */
-
-  const scrollToEnd = () => {
-    const container = sliderRef.current;
-
-    if (!container) return;
-
-    container.scrollTo({
-      left: container.scrollWidth,
-      behavior: "smooth",
-    });
-  };
-
   return (
     <>
       <section
+        aria-labelledby="reels-heading"
         className="
           overflow-hidden
           bg-[#faf9f7]
           py-14
-          sm:py-18
+          sm:py-16
           lg:py-20
         "
       >
@@ -790,9 +696,7 @@ export default function Reels() {
             lg:px-8
           "
         >
-          {/* =================================================
-              HEADER
-          ================================================= */}
+          {/* HEADER */}
 
           <div
             className="
@@ -806,7 +710,7 @@ export default function Reels() {
           >
             <div>
               <div className="mb-2.5 flex items-center gap-2">
-                <span className="h-px w-6 bg-neutral-400" />
+                <span className="h-px w-6 bg-neutral-400" aria-hidden="true" />
 
                 <p
                   className="
@@ -817,11 +721,12 @@ export default function Reels() {
                     text-neutral-500
                   "
                 >
-                  Watch & Discover
+                  Watch &amp; Discover
                 </p>
               </div>
 
               <h2
+                id="reels-heading"
                 className="
                   font-serif
                   text-3xl
@@ -850,71 +755,68 @@ export default function Reels() {
 
             {/* DESKTOP NAVIGATION */}
 
-            <div className="hidden items-center gap-2.5 sm:flex">
-              <button
-                type="button"
-                onClick={() => scrollReels("left")}
-                aria-label="Previous reels"
-                className="
-                  flex
-                  h-10
-                  w-10
-                  items-center
-                  justify-center
-                  rounded-full
-                  border
-                  border-neutral-200
-                  bg-white
-                  text-neutral-800
-                  shadow-sm
-                  transition
-                  hover:border-neutral-900
-                  hover:bg-neutral-900
-                  hover:text-white
-                "
-              >
-                <ChevronLeft size={17} />
-              </button>
+            {reels.length > 1 && (
+              <div className="hidden items-center gap-2.5 sm:flex">
+                <button
+                  type="button"
+                  onClick={() => scrollReels("left")}
+                  aria-label="Previous reels"
+                  className="
+                    flex
+                    h-10
+                    w-10
+                    items-center
+                    justify-center
+                    rounded-full
+                    border
+                    border-neutral-200
+                    bg-white
+                    text-neutral-800
+                    shadow-sm
+                    transition
+                    hover:border-neutral-900
+                    hover:bg-neutral-900
+                    hover:text-white
+                    focus:outline-none
+                    focus:ring-2
+                    focus:ring-neutral-900
+                  "
+                >
+                  <ChevronLeft size={17} />
+                </button>
 
-              <button
-                type="button"
-                onClick={() => scrollReels("right")}
-                aria-label="Next reels"
-                className="
-                  flex
-                  h-10
-                  w-10
-                  items-center
-                  justify-center
-                  rounded-full
-                  border
-                  border-neutral-200
-                  bg-white
-                  text-neutral-800
-                  shadow-sm
-                  transition
-                  hover:border-neutral-900
-                  hover:bg-neutral-900
-                  hover:text-white
-                "
-              >
-                <ChevronRight size={17} />
-              </button>
-            </div>
+                <button
+                  type="button"
+                  onClick={() => scrollReels("right")}
+                  aria-label="Next reels"
+                  className="
+                    flex
+                    h-10
+                    w-10
+                    items-center
+                    justify-center
+                    rounded-full
+                    border
+                    border-neutral-200
+                    bg-white
+                    text-neutral-800
+                    shadow-sm
+                    transition
+                    hover:border-neutral-900
+                    hover:bg-neutral-900
+                    hover:text-white
+                    focus:outline-none
+                    focus:ring-2
+                    focus:ring-neutral-900
+                  "
+                >
+                  <ChevronRight size={17} />
+                </button>
+              </div>
+            )}
           </div>
 
-          {/* =================================================
-              CAROUSEL
-              
-              MOBILE:
-              1 card
-
-              TABLET:
-              2 cards
-
-              DESKTOP:
-              EXACTLY 4 cards
-          ================================================= */}
+          {/* REELS CAROUSEL */}
 
           <div className="relative">
             <div
@@ -941,9 +843,7 @@ export default function Reels() {
                   className="
                     min-w-[76%]
                     snap-center
-
                     sm:min-w-[calc((100%-20px)/2)]
-
                     lg:min-w-[calc((100%-60px)/4)]
                   "
                 >
@@ -956,18 +856,9 @@ export default function Reels() {
             </div>
           </div>
 
-          {/* =================================================
-              FOOTER
-          ================================================= */}
+          {/* FOOTER */}
 
-          <div
-            className="
-              mt-4
-              flex
-              items-center
-              justify-between
-            "
-          >
+          <div className="mt-4 flex items-center justify-center">
             <div
               className="
                 flex
@@ -977,49 +868,22 @@ export default function Reels() {
                 text-neutral-400
               "
             >
-              <span className="h-1.5 w-1.5 rounded-full bg-neutral-400" />
+              <span
+                className="h-1.5 w-1.5 rounded-full bg-neutral-400"
+                aria-hidden="true"
+              />
 
               <span className="sm:hidden">Swipe to explore</span>
 
-              <span className="hidden sm:inline">Explore our latest reels</span>
+              <span className="hidden sm:inline">
+                Explore our latest saree reels
+              </span>
             </div>
-
-            <button
-              type="button"
-              onClick={scrollToEnd}
-              className="
-                group
-                flex
-                items-center
-                gap-1.5
-                border-b
-                border-neutral-300
-                pb-1
-                text-[11px]
-                font-medium
-                text-neutral-700
-                transition
-                hover:border-neutral-900
-                hover:text-neutral-900
-              "
-            >
-              Explore all {reels.length} reels
-              <ChevronRight
-                size={13}
-                className="
-                  transition-transform
-                  duration-300
-                  group-hover:translate-x-1
-                "
-              />
-            </button>
           </div>
         </div>
       </section>
 
-      {/* =====================================================
-          FULLSCREEN
-      ===================================================== */}
+      {/* FULLSCREEN */}
 
       {fullscreenIndex !== null && (
         <FullscreenViewer

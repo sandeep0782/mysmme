@@ -43,12 +43,12 @@ const NewSarees = () => {
   // TOTAL COMPLETE SLIDES
   // ============================================
   const totalSlides =
-    itemsPerSlide > 0 ? Math.floor(sarees.length / itemsPerSlide) : 0;
+    itemsPerSlide > 0 ? Math.ceil(sarees.length / itemsPerSlide) : 0;
 
   // ============================================
   // ONLY SHOW COMPLETE GROUPS
   // ============================================
-  const visibleSarees = sarees.slice(0, totalSlides * itemsPerSlide);
+  const visibleSarees = sarees;
 
   // ============================================
   // KEEP CURRENT SLIDE VALID
@@ -123,7 +123,7 @@ const NewSarees = () => {
             </p>
 
             <h2 className="text-3xl font-bold text-gray-900 md:text-4xl">
-              Discover Our Latest Sarees
+              Explore our newest sarees...
             </h2>
 
             <p className="mx-auto mt-3 max-w-2xl text-gray-600">
@@ -219,7 +219,7 @@ const NewSarees = () => {
                       .map((saree: any) => {
                         const price = Number(saree.price) || 0;
 
-                        const finalPrice = Number(saree.finalPrice) || 0;
+                        const finalPrice = Number(saree.finalPrice) || price;
 
                         const discount = calculatedDiscount(price, finalPrice);
 
@@ -249,22 +249,19 @@ const NewSarees = () => {
                                 src={imageUrl}
                                 alt={saree.title || "Saree"}
                                 fill
-                                priority={slideIndex === 0}
-                                loading={slideIndex === 0 ? "eager" : "lazy"}
                                 sizes="
-                                  (min-width: 1024px) 33vw,
-                                  (min-width: 640px) 50vw,
-                                  100vw
-                                "
+    (min-width: 1024px) 33vw,
+    (min-width: 640px) 50vw,
+    100vw
+  "
                                 className="
-                                  object-contain
-                                  p-2
-                                  transition-transform
-                                  duration-300
-                                  lg:group-hover:scale-105
-                                "
+    object-contain
+    p-2
+    transition-transform
+    duration-300
+    lg:group-hover:scale-105
+  "
                               />
-
                               {/* ============================================
                                         DISCOUNT
                               ============================================ */}
@@ -516,46 +513,19 @@ const NewSarees = () => {
                 >
                   <span aria-hidden="true">&#10095;</span>
                 </button>
-
                 {/* ============================================
-                            DOTS
-                ============================================ */}
-                <div
-                  className="mt-8 flex justify-center gap-2"
-                  role="tablist"
-                  aria-label="Choose saree slide"
-                >
-                  {Array.from({
-                    length: totalSlides,
-                  }).map((_, index) => {
-                    const isActive = currentSareeSlide === index;
+        COMPACT SLIDE INDICATOR
+============================================ */}
+                <div className="mt-8 flex justify-center" aria-live="polite">
+                  <div className="rounded-full bg-white px-5 py-2 text-sm font-semibold text-gray-600 shadow-sm">
+                    <span className="text-red-500">
+                      {currentSareeSlide + 1}
+                    </span>
 
-                    return (
-                      <button
-                        key={index}
-                        type="button"
-                        onClick={() => setCurrentSareeSlide(index)}
-                        role="tab"
-                        aria-selected={isActive}
-                        aria-label={`Go to saree slide ${index + 1}`}
-                        className={`
-                          h-2
-                          rounded-full
-                          transition-all
-                          duration-300
-                          focus:outline-none
-                          focus:ring-2
-                          focus:ring-red-500
-                          focus:ring-offset-2
-                          ${
-                            isActive
-                              ? "w-8 bg-red-500"
-                              : "w-2 bg-gray-300 hover:bg-gray-400"
-                          }
-                        `}
-                      />
-                    );
-                  })}
+                    <span className="mx-2 text-gray-300">/</span>
+
+                    <span>{totalSlides}</span>
+                  </div>
                 </div>
               </>
             )}

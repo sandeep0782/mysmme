@@ -329,20 +329,18 @@ const ShopByOccasion = () => {
                               src={occasion.image || FALLBACK_IMAGE}
                               alt={`${occasion.name} Sarees`}
                               fill
-                              priority={slideIndex === 0}
-                              loading={slideIndex === 0 ? "eager" : "lazy"}
                               sizes="
-                                (min-width: 1280px) 25vw,
-                                (min-width: 1024px) 33vw,
-                                (min-width: 640px) 50vw,
-                                100vw
-                              "
+    (min-width: 1280px) 25vw,
+    (min-width: 1024px) 33vw,
+    (min-width: 640px) 50vw,
+    100vw
+  "
                               className="
-                                object-contain
-                                transition-transform
-                                duration-500
-                                group-hover:scale-105
-                              "
+    object-contain
+    transition-transform
+    duration-500
+    group-hover:scale-105
+  "
                             />
 
                             {/* ==================================================
@@ -470,77 +468,13 @@ const ShopByOccasion = () => {
           ====================================================== */}
 
           {totalSlides > 1 && (
-            <>
-              {/* Previous */}
-
-              <button
-                type="button"
-                onClick={prevSlide}
-                aria-label="Previous occasions"
-                className="
-                  absolute
-                  left-1
-                  top-1/2
-                  z-20
-                  flex
-                  h-9
-                  w-9
-                  -translate-y-1/2
-                  items-center
-                  justify-center
-                  rounded-full
-                  bg-white/95
-                  text-gray-900
-                  shadow-lg
-                  transition-all
-                  duration-300
-                  hover:bg-red-500
-                  hover:text-white
-                  focus:outline-none
-
-                  sm:left-2
-                  sm:h-10
-                  sm:w-10
-                "
-              >
-                <span aria-hidden="true">&#10094;</span>
-              </button>
-
-              {/* Next */}
-
-              <button
-                type="button"
-                onClick={nextSlide}
-                aria-label="Next occasions"
-                className="
-                  absolute
-                  right-1
-                  top-1/2
-                  z-20
-                  flex
-                  h-9
-                  w-9
-                  -translate-y-1/2
-                  items-center
-                  justify-center
-                  rounded-full
-                  bg-white/95
-                  text-gray-900
-                  shadow-lg
-                  transition-all
-                  duration-300
-                  hover:bg-red-500
-                  hover:text-white
-                  focus:outline-none
-
-                  sm:right-2
-                  sm:h-10
-                  sm:w-10
-                "
-              >
-                <span aria-hidden="true">&#10095;</span>
-              </button>
-            </>
+            <div className="mt-6 flex justify-center">
+              <div className="rounded-full bg-white px-5 py-2 text-sm font-semibold text-gray-600 shadow-sm">
+                <span className="text-red-500">{currentSlide + 1}</span>
+                <span className="mx-2 text-gray-300">/</span>
+                <span>{totalSlides}</span>
+              </div>
+            </div>
           )}
 
           {/* ======================================================

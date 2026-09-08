@@ -121,9 +121,14 @@ const Hero = () => {
             {slide.eyebrow}
           </p>
 
-          <h1 className="text-4xl font-bold drop-shadow-[0_3px_6px_rgba(0,0,0,0.8)] md:text-6xl">
-            {slide.title}
+          <h1 className="text-3xl font-bold drop-shadow-[0_3px_6px_rgba(0,0,0,0.8)] sm:text-4xl md:text-5xl lg:text-6xl">
+            India&apos;s Dedicated Saree Marketplace
           </h1>
+
+          {/* Changes according to current banner */}
+          <h2 className="mt-4 text-2xl font-semibold drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] md:text-3xl">
+            {slide.title}
+          </h2>
 
           <p className="mt-5 text-lg drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] md:text-xl">
             {slide.description}
@@ -135,7 +140,7 @@ const Hero = () => {
               href="/sarees"
               className="rounded-full bg-white px-7 py-3 font-semibold text-gray-900 shadow-lg transition-colors hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-transparent"
             >
-              Explore Collection
+              Shop Sarees
             </Link>
 
             <Link

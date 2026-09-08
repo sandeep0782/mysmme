@@ -22,12 +22,12 @@ export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
 
   title: {
-    default: "MYSMME | Shop & Sell Sarees Online",
+    default: "Buy Sarees Online | India's Dedicated Saree Marketplace | MYSMME",
     template: `%s | ${siteName}`,
   },
 
   description:
-    "Discover, shop and sell beautiful sarees online with MYSMME. Explore sarees from trusted sellers and grow your saree business with our marketplace.",
+    "Shop sarees online at MYSMME, India's dedicated saree marketplace. Discover silk, cotton, organza, Banarasi, handloom, designer, party wear and daily wear sarees from sellers across India.",
 
   applicationName: siteName,
 
@@ -46,14 +46,17 @@ export const metadata: Metadata = {
     "buy sarees online",
     "shop sarees online",
     "saree marketplace",
-    "online saree store",
     "Indian sarees",
-    "designer sarees",
     "silk sarees",
     "cotton sarees",
+    "organza sarees",
+    "Banarasi sarees",
+    "Kanjivaram sarees",
+    "handloom sarees",
+    "designer sarees",
+    "party wear sarees",
+    "daily wear sarees",
     "wedding sarees",
-    "traditional sarees",
-    "saree sellers",
     "sell sarees online",
   ],
 
@@ -69,17 +72,17 @@ export const metadata: Metadata = {
     url: siteUrl,
     siteName,
 
-    title: "MYSMME | Shop & Sell Sarees Online",
+    title: "Buy Sarees Online | India's Dedicated Saree Marketplace | MYSMME",
 
     description:
-      "Discover beautiful sarees from trusted sellers or grow your saree business with MYSMME.",
+      "Discover sarees from sellers across India. Shop silk, cotton, organza, Banarasi, handloom, designer, party wear and daily wear sarees on MYSMME.",
 
     images: [
       {
         url: "/og-image.jpg",
         width: 1200,
         height: 630,
-        alt: "MYSMME - Shop & Sell Sarees Online",
+        alt: "MYSMME - India's Dedicated Saree Marketplace",
       },
     ],
   },
@@ -87,10 +90,10 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
 
-    title: "MYSMME | Shop & Sell Sarees Online",
+    title: "Buy Sarees Online | India's Dedicated Saree Marketplace | MYSMME",
 
     description:
-      "Discover beautiful sarees from trusted sellers and grow your saree business with MYSMME.",
+      "Discover sarees from sellers across India on MYSMME, India's dedicated saree marketplace.",
 
     images: ["/og-image.jpg"],
   },

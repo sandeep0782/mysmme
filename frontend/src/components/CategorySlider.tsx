@@ -14,7 +14,7 @@ const CategorySlider = () => {
   const directionRef = useRef(-1);
   const isHoveredRef = useRef(false);
 
-  const speed = 1.5;
+  const speed = 0.5;
 
   const {
     data: categories = [],
@@ -117,10 +117,10 @@ const CategorySlider = () => {
             Shop Sarees by Category
           </h2>
 
-          <p className="mx-auto mt-3 max-w-xl text-gray-500">
-            Discover beautiful sarees by category, style and fabric. Explore
-            traditional and contemporary sarees for weddings, festivals,
-            celebrations and everyday fashion.
+          <p className="mx-auto mt-3 max-w-2xl text-gray-500">
+            Explore sarees by fabric, weave, style and occasion — from silk,
+            cotton and organza to handloom, designer, festive and everyday
+            sarees.
           </p>
         </header>
 
@@ -185,7 +185,7 @@ const CategorySlider = () => {
               }}
             >
               {categories.map((category) => {
-                const categoryName = category.name?.trim();
+                const categoryName = category.name?.trim() || "Saree";
 
                 const categoryUrl = `/category/${encodeURIComponent(category.slug)}`;
 
@@ -212,7 +212,7 @@ const CategorySlider = () => {
                           className="flex h-full w-full items-center justify-center bg-gray-100 text-xs text-gray-400"
                           aria-hidden="true"
                         >
-                          No Image
+                          Saree
                         </div>
                       )}
 
