@@ -104,9 +104,9 @@ export default function Footer() {
           <FooterColumn
             title="Marketplace"
             links={[
-              ["Browse Products", "/products"],
-              ["Categories", "/categories"],
-              ["Featured Sellers", "/featured"],
+              ["Browse Sarees", "/sarees"],
+              ["Categories", "/category"],
+              ["Featured Brands", "/brands"],
               ["Deals & Offers", "/deals"],
               ["FAQ", "/faq"],
             ]}
@@ -117,10 +117,10 @@ export default function Footer() {
           <FooterColumn
             title="For Sellers"
             links={[
-              ["Become a Seller", "/auth/register"],
-              ["Seller Dashboard", "/seller"],
+              ["Become a Seller", "https://admin.mysmme.com/auth/register"],
+              ["Seller Dashboard", "https://admin.mysmme.com/auth/login"],
               ["Seller Guide", "/seller-guide"],
-              ["Seller Support", "/seller-support"],
+              ["Seller Support", "https://admin.mysmme.com/support"],
             ]}
           />
 
@@ -129,7 +129,7 @@ export default function Footer() {
           <FooterColumn
             title="Support"
             links={[
-              ["Help Center", "/support"],
+              ["Help Center", "https://admin.mysmme.com/support"],
               ["Contact Us", "/contact"],
               ["Shipping Information", "/shipping"],
               ["Returns & Refunds", "/returns"],
