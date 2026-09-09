@@ -252,21 +252,13 @@ export default async function CategoryPage() {
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-x-4 gap-y-10 sm:grid-cols-3 sm:gap-x-6 lg:grid-cols-4 xl:grid-cols-5">
-              {activeCategories.map((category, index) => {
+            <div className="flex flex-wrap justify-center gap-x-4 gap-y-10 sm:gap-x-6">
+              {activeCategories.map((category) => {
                 const categoryName = category.name.trim();
 
                 const categoryUrl = `/category/${encodeURIComponent(
                   category.slug,
                 )}`;
-
-                /*
-                 * Mix the visual treatment naturally.
-                 *
-                 * Every category remains a normal HTML <a> link,
-                 * which is important for crawling and internal linking.
-                 */
-                const isRound = index % 3 === 0;
 
                 return (
                   <Link
@@ -274,28 +266,36 @@ export default async function CategoryPage() {
                     href={categoryUrl}
                     title={`Explore ${categoryName} sarees`}
                     aria-label={`Explore ${categoryName} sarees`}
-                    className="group block"
+                    className="
+  group block
+  w-[calc(50%-0.5rem)]
+  sm:w-[calc(33.333%-1rem)]
+  lg:w-[calc(25%-1.125rem)]
+  xl:w-[calc(20%-1.2rem)]
+"
                   >
                     <article>
+                      {/* CATEGORY IMAGE */}
                       <div
-                        className={[
-                          "relative overflow-hidden bg-gray-100 shadow-sm transition-all duration-500",
-                          "group-hover:-translate-y-1 group-hover:shadow-xl",
-                          isRound
-                            ? "mx-auto aspect-square w-[82%] rounded-full border-4 border-white ring-1 ring-gray-100"
-                            : "aspect-[4/5] rounded-2xl",
-                        ].join(" ")}
+                        className="
+              relative
+              aspect-square
+              overflow-hidden
+              rounded-2xl
+              bg-gray-100
+              shadow-sm
+              transition-all
+              duration-500
+              group-hover:-translate-y-1
+              group-hover:shadow-xl
+            "
                       >
                         {category.image ? (
                           <Image
                             src={category.image}
                             alt={`${categoryName} sarees collection`}
                             fill
-                            sizes={
-                              isRound
-                                ? "(max-width: 640px) 38vw, (max-width: 1024px) 25vw, 16vw"
-                                : "(max-width: 640px) 48vw, (max-width: 1024px) 25vw, 20vw"
-                            }
+                            sizes="(max-width: 640px) 48vw, (max-width: 1024px) 30vw, (max-width: 1280px) 23vw, 18vw"
                             className="object-cover transition-transform duration-700 group-hover:scale-105"
                           />
                         ) : (
@@ -304,17 +304,22 @@ export default async function CategoryPage() {
                           </div>
                         )}
 
+                        {/* HOVER OVERLAY */}
                         <div
-                          className={[
-                            "absolute inset-0 transition-colors duration-500",
-                            isRound
-                              ? "rounded-full bg-black/0 group-hover:bg-black/15"
-                              : "rounded-2xl bg-black/0 group-hover:bg-black/15",
-                          ].join(" ")}
+                          className="
+                absolute
+                inset-0
+                rounded-2xl
+                bg-black/0
+                transition-colors
+                duration-500
+                group-hover:bg-black/15
+              "
                           aria-hidden="true"
                         />
                       </div>
 
+                      {/* CATEGORY DETAILS */}
                       <div className="mt-4 text-center">
                         <h3 className="text-base font-semibold text-gray-900 transition-colors duration-300 group-hover:text-red-500 sm:text-lg">
                           {categoryName} Sarees

@@ -18,7 +18,7 @@ const dashboardRoutes: Record<string, string> = {
   admin: "/platform/admin",
   "super-admin": "/platform/super-admin",
   seller: "/platform/seller",
-  freelancer: "/platform/freelancer",
+  freelancer: "/platform/freelancer/dashboard",
 };
 
 export default function middleware(req: NextRequest) {
