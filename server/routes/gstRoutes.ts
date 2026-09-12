@@ -18,4 +18,5 @@ router.post("/", authenticateUser, createGst);
 router.patch("/:id", authenticateUser, updateGst);
 router.delete("/:id", authenticateUser, deleteGst);
 
+
 export default router;

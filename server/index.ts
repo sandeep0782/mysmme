@@ -30,10 +30,19 @@ import reelRoutes from "./routes/reelRoutes";
 import { robotsTxt } from "./robots";
 import { importUsersFromExcel } from "./controllers/importUserController";
 import userImportRoutes from "./routes/userImportRoutes";
+import gstVerificationRoutes from "./routes/gstVerificationRoutes";
+import sellerRoutes from "./routes/sellerRoutes";
 
 // Load environment variables BEFORE importing/starting
 // anything that depends on process.env.
-dotenv.config();
+dotenv.config({
+  path: "/Users/krishna/Desktop/mysmme/server/.env",
+});
+
+console.log("GST config:", {
+  baseUrl: process.env.GST_VERIFY_BASE_URL,
+  apiConfigured: Boolean(process.env.GST_VERIFICATION_API),
+});
 
 const PORT = Number(process.env.PORT) || 8000;
 
@@ -158,6 +167,10 @@ app.use("/api/campaigns", campaignRoutes);
 
 app.use("/api/reels", reelRoutes);
 app.use("/api/users", userImportRoutes);
+app.use("/api/sellers", sellerRoutes);
+app.use("/api/v1/gst", gstRoutes);
+
+app.use("/api/v1/verify", gstVerificationRoutes);
 
 // -----------------------------------------------------
 // Start server

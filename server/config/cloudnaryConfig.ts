@@ -7,6 +7,8 @@ import {
 import dotenv from "dotenv";
 import { RequestHandler } from "express";
 import crypto from "crypto";
+import sharp from "sharp";
+import { checkImageForNudity } from "../utils/nsfwDetector";
 
 dotenv.config();
 
@@ -57,13 +59,16 @@ const uploadFileToCloudinary = (
 export const uploadImageUrlToCloudinary = async (
   imageUrl: string,
   folder = "products",
-): Promise<string> => {
+): Promise<{
+  url: string;
+  hash: string;
+}> => {
   if (!imageUrl) {
     throw new Error("Image URL is required");
   }
 
   // ----------------------------------------------------------
-  // Validate URL
+  // VALIDATE URL
   // ----------------------------------------------------------
 
   let parsedUrl: URL;
@@ -77,8 +82,6 @@ export const uploadImageUrlToCloudinary = async (
   if (!["http:", "https:"].includes(parsedUrl.protocol)) {
     throw new Error(`Invalid image protocol: ${parsedUrl.protocol}`);
   }
-
-  console.log(`Downloading image: ${imageUrl}`);
 
   // ----------------------------------------------------------
   // DOWNLOAD IMAGE
@@ -97,7 +100,6 @@ export const uploadImageUrlToCloudinary = async (
       method: "GET",
       signal: controller.signal,
       headers: {
-        // Some CDNs behave better with a normal browser UA.
         "User-Agent":
           "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36",
         Accept:
@@ -106,7 +108,9 @@ export const uploadImageUrlToCloudinary = async (
     });
   } catch (error) {
     if ((error as Error)?.name === "AbortError") {
-      throw new Error(`Image download timed out after 30 seconds: ${imageUrl}`);
+      throw new Error(
+        `Image download timed out after 30 seconds: ${imageUrl}`,
+      );
     }
 
     throw new Error(
@@ -151,56 +155,159 @@ export const uploadImageUrlToCloudinary = async (
     throw new Error(`Downloaded image is empty: ${imageUrl}`);
   }
 
-  // Prevent accidentally downloading huge files.
+  // ----------------------------------------------------------
+  // MAX FILE SIZE CHECK
+  // ----------------------------------------------------------
+
   const MAX_IMAGE_SIZE = 15 * 1024 * 1024;
 
   if (buffer.length > MAX_IMAGE_SIZE) {
     throw new Error(
       `Image is too large (${Math.round(
         buffer.length / 1024 / 1024,
-      )} MB): ${imageUrl}`,
+      )} MB). Maximum allowed size is 15 MB.`,
     );
   }
 
-  console.log(`Downloaded image: ${Math.round(buffer.length / 1024)} KB`);
+  // ----------------------------------------------------------
+  // READ IMAGE METADATA
+  // ----------------------------------------------------------
+
+  let metadata: sharp.Metadata;
+
+  try {
+    metadata = await sharp(buffer, {
+      failOn: "none",
+    }).metadata();
+  } catch {
+    throw new Error(`Unable to read image: ${imageUrl}`);
+  }
+
+  const width = metadata.width;
+  const height = metadata.height;
+
+  if (!width || !height) {
+    throw new Error("Unable to determine image dimensions");
+  }
+
+  // ----------------------------------------------------------
+  // EXACT IMAGE SIZE VALIDATION
+  // ----------------------------------------------------------
+
+  const REQUIRED_WIDTH = 1080;
+  const REQUIRED_HEIGHT = 1440;
+
+  console.log("IMAGE SIZE CHECK", {
+    required: `${REQUIRED_WIDTH}x${REQUIRED_HEIGHT}`,
+    received: `${width}x${height}`,
+    imageUrl,
+  });
+
+  if (width !== REQUIRED_WIDTH || height !== REQUIRED_HEIGHT) {
+    throw new Error(
+      `Image size is not matching. Required size is ${REQUIRED_WIDTH}x${REQUIRED_HEIGHT}px, received ${width}x${height}px.`,
+    );
+  }
+
+  // ==========================================================
+  // IMPORTANT:
+  // DO NOT RESIZE, CROP, ROTATE OR RE-ENCODE THE IMAGE.
+  // Upload the original buffer exactly as downloaded.
+  // ==========================================================
+
+  const uploadBuffer = buffer;
+
+  // ==========================================================
+  // NUDITY / NSFW CHECK
+  // ==========================================================
+
+  const nudityCheck = await checkImageForNudity(uploadBuffer);
+
+  if (!nudityCheck.safe) {
+    throw new Error(
+      "Image rejected: potentially explicit content detected",
+    );
+  }
+
+  // ----------------------------------------------------------
+  // IMAGE HASH
+  // ----------------------------------------------------------
+
+  const imageHash = crypto
+    .createHash("sha256")
+    .update(uploadBuffer)
+    .digest("hex");
 
   // ----------------------------------------------------------
   // CREATE STABLE PUBLIC ID
   // ----------------------------------------------------------
 
-  const hash = crypto.createHash("sha1").update(imageUrl).digest("hex");
+  const sourceHash = crypto
+    .createHash("sha1")
+    .update(imageUrl)
+    .digest("hex");
 
-  const publicId = `product-${hash}`;
+  const publicId = `product-${sourceHash}`;
 
   // ----------------------------------------------------------
-  // UPLOAD BUFFER TO CLOUDINARY
+  // UPLOAD ORIGINAL BUFFER TO CLOUDINARY
   // ----------------------------------------------------------
 
   const uploadOptions: UploadApiOptions = {
     resource_type: "image",
     folder,
     public_id: publicId,
-    overwrite: false,
+    overwrite: true,
+    invalidate: true,
   };
 
-  const result = await new Promise<UploadApiResponse>((resolve, reject) => {
-    const uploadStream = cloudinary.uploader.upload_stream(
-      uploadOptions,
-      (error, result) => {
-        if (error) {
-          return reject(error);
-        }
+  const result = await new Promise<UploadApiResponse>(
+    (resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        uploadOptions,
+        (error, result) => {
+          if (error) {
+            return reject(error);
+          }
 
-        resolve(result as UploadApiResponse);
-      },
-    );
+          if (!result) {
+            return reject(
+              new Error("Cloudinary upload returned no result"),
+            );
+          }
 
-    uploadStream.end(buffer);
+          resolve(result);
+        },
+      );
+
+      uploadStream.end(uploadBuffer);
+    },
+  );
+
+  console.log("CLOUDINARY UPLOAD", {
+    publicId: result.public_id,
+    width: result.width,
+    height: result.height,
+    url: result.secure_url,
   });
 
-  console.log(`Cloudinary upload successful: ${result.secure_url}`);
+  // ----------------------------------------------------------
+  // VERIFY CLOUDINARY DID NOT CHANGE DIMENSIONS
+  // ----------------------------------------------------------
 
-  return result.secure_url;
+  if (
+    result.width !== REQUIRED_WIDTH ||
+    result.height !== REQUIRED_HEIGHT
+  ) {
+    throw new Error(
+      `Uploaded image dimensions are incorrect. Expected ${REQUIRED_WIDTH}x${REQUIRED_HEIGHT}px but Cloudinary returned ${result.width}x${result.height}px.`,
+    );
+  }
+
+  return {
+    url: result.secure_url,
+    hash: imageHash,
+  };
 };
 
 // ============================================================

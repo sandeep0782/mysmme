@@ -97,6 +97,7 @@ export interface IProduct extends Document {
 
   // Seller
   seller: mongoose.Types.ObjectId;
+  
 
   createdAt?: Date;
   updatedAt?: Date;

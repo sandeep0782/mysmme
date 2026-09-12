@@ -12,13 +12,19 @@ import Season from "../models/Season";
 import { uploadImageUrlToCloudinary } from "../config/cloudnaryConfig";
 import { Types } from "mongoose";
 
+import ImageFingerprint from "../models/ImageFingerprint";
+
 type ExcelProductRow = Record<string, unknown>;
 
 // ============================================================
 // TYPES
 // ============================================================
+type UploadedImage = {
+  url: string;
+  hash: string;
+};
 
-type ImageCache = Map<string, string>;
+type ImageCache = Map<string, UploadedImage>;
 
 // ============================================================
 // HELPERS
@@ -191,61 +197,64 @@ const findSeason = async (value: string) => {
 const uploadProductImages = async (
   imageUrls: string[],
   imageCache: ImageCache,
-): Promise<string[]> => {
+): Promise<UploadedImage[]> => {
   if (imageUrls.length === 0) {
     throw new Error("At least one image is required");
   }
 
-  const cloudinaryImages: string[] = [];
-
-  // ----------------------------------------------------------
-  // Upload sequentially
-  //
-  // This is safer for Meesho/Cloudinary and avoids sending
-  // hundreds of requests simultaneously.
-  // ----------------------------------------------------------
+  const uploadedImages: UploadedImage[] = [];
 
   for (const imageUrl of imageUrls) {
-    // --------------------------------------------------------
-    // Already uploaded during this import?
-    // --------------------------------------------------------
+    // ========================================================
+    // CHECK IMPORT CACHE
+    // ========================================================
 
-    const cachedUrl = imageCache.get(imageUrl);
+    const cachedImage = imageCache.get(imageUrl);
 
-    if (cachedUrl) {
-      console.log(`Using cached Cloudinary image: ${cachedUrl}`);
+    if (cachedImage) {
+      console.log(`Using cached Cloudinary image: ${cachedImage.url}`);
 
-      cloudinaryImages.push(cachedUrl);
+      uploadedImages.push(cachedImage);
       continue;
     }
 
     try {
       console.log(`Uploading product image to Cloudinary: ${imageUrl}`);
 
-      const cloudinaryUrl = await uploadImageUrlToCloudinary(
+      // ======================================================
+      // TRANSFORM + NSFW CHECK + HASH + CLOUDINARY UPLOAD
+      // ======================================================
+
+      const uploaded = await uploadImageUrlToCloudinary(
         imageUrl,
         "products/import",
       );
 
-      // ------------------------------------------------------
-      // Cache it
-      // ------------------------------------------------------
+      const existingImage = await ImageFingerprint.findOne({
+        hash: uploaded.hash,
+      }).lean();
 
-      imageCache.set(imageUrl, cloudinaryUrl);
+      if (existingImage) {
+        throw new Error(
+          `Duplicate image detected. This image is already used by another product.`,
+        );
+      }
 
-      cloudinaryImages.push(cloudinaryUrl);
+      imageCache.set(imageUrl, uploaded);
 
-      console.log(`Cloudinary image saved: ${cloudinaryUrl}`);
+      uploadedImages.push(uploaded);
+
+      console.log(`Cloudinary image saved: ${uploaded.url}`);
     } catch (error) {
       throw new Error(
-        `Failed to upload image "${imageUrl}": ${
+        `Failed to process image "${imageUrl}": ${
           error instanceof Error ? error.message : "Unknown error"
         }`,
       );
     }
   }
 
-  return cloudinaryImages;
+  return uploadedImages;
 };
 
 // ============================================================
@@ -304,8 +313,11 @@ const importProductRow = async (
   // DOWNLOAD + UPLOAD TO CLOUDINARY
   // ==========================================================
 
-  const images = await uploadProductImages(imageUrls, imageCache);
+  const uploadedImages = await uploadProductImages(imageUrls, imageCache);
 
+  const images = uploadedImages.map((image) => image.url);
+
+  const imageHashes = uploadedImages.map((image) => image.hash);
   // ==========================================================
   // PRODUCT DATA
   // ==========================================================
@@ -482,7 +494,15 @@ const importProductRow = async (
   // ==========================================================
 
   try {
-    await Product.create(productData);
+    const createdProduct = await Product.create(productData);
+
+    await ImageFingerprint.insertMany(
+      imageHashes.map((hash, index) => ({
+        hash,
+        product: createdProduct._id,
+        imageUrl: images[index],
+      })),
+    );
   } catch (error: any) {
     if (error?.code === 11000) {
       const duplicateField = Object.keys(error.keyPattern || {})[0];
@@ -547,30 +567,6 @@ export const processProductImport = async (
       defval: "",
     });
 
-    // ========================================================
-    // LOG EXCEL
-    // ========================================================
-
-    console.log("====================================");
-
-    console.log(`READING SHEET: ${sheetName}`);
-
-    console.log(`TOTAL ROWS: ${rows.length}`);
-
-    console.log("COLUMNS:");
-
-    console.log(Object.keys(rows[0] || {}));
-
-    console.log("FIRST ROW:");
-
-    console.log(rows[0]);
-
-    console.log("====================================");
-
-    // ========================================================
-    // TOTAL ROWS
-    // ========================================================
-
     await ProductImport.findByIdAndUpdate(productImportId, {
       totalRows: rows.length,
     });
@@ -604,12 +600,6 @@ export const processProductImport = async (
       const rowNumber = index + 2;
 
       try {
-        console.log(`====================================`);
-
-        console.log(`Processing product row ${rowNumber}`);
-
-        console.log(`Product: ${getString(row.title)}`);
-
         console.log(`SKU: ${getString(row.skuId)}`);
 
         // ----------------------------------------------------
@@ -700,28 +690,6 @@ export const processProductImport = async (
 
       importErrors,
     });
-
-    // ========================================================
-    // LOG
-    // ========================================================
-
-    console.log("====================================");
-
-    console.log("PRODUCT IMPORT FINISHED");
-
-    console.log("TOTAL:", rows.length);
-
-    console.log("SUCCESS:", successRows);
-
-    console.log("FAILED:", failedRows);
-
-    console.log("STATUS:", status);
-
-    console.log("CLOUDINARY IMAGES:", imageCache.size);
-
-    console.log("IMPORT ERRORS:", importErrors);
-
-    console.log("====================================");
   } catch (error) {
     console.error("Product import failed:", error);
 

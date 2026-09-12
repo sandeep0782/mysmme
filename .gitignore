@@ -1,2 +1,15 @@
-docker-compose.override.yml
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Environment files
 .env
+.env.*
+!.env.example
+
+# Server uploads
+/server/uploads/
+
+# Server debug files
+/server/debug-original.jpg
+/server/debug-transformed.jpg

@@ -22,6 +22,7 @@ import {
   Megaphone,
   BookAudio,
   User,
+  Store,
 } from "lucide-react";
 
 type SidebarProps = {
@@ -79,6 +80,11 @@ const menuItems = [
     icon: <Database className="h-5 w-5" />,
     label: "Import",
     href: "/platform/admin/import",
+  },
+  {
+    icon: <Store className="h-5 w-5" />,
+    label: "Seller",
+    href: "/platform/admin/seller",
   },
 ];
 
