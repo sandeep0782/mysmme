@@ -202,15 +202,7 @@ const Page = () => {
     }
 
     try {
-      console.log("Uploading Excel file:", {
-        name: file.name,
-        size: file.size,
-        type: file.type,
-      });
-
       const response = await importUsersFromExcel(file).unwrap();
-
-      console.log("Import response:", response);
 
       const importedCount = response?.summary?.imported ?? users.length;
       const failedCount = response?.summary?.failed ?? 0;
@@ -245,10 +237,6 @@ const Page = () => {
         status?: number | string;
         message?: string;
       };
-
-      console.error("Status:", apiError?.status);
-      console.error("Data:", apiError?.data);
-      console.error("Error:", apiError?.error);
 
       const errorMessage =
         apiError?.data?.message ||

@@ -61,10 +61,7 @@ export default function LoginPage() {
           return;
         }
       }
-      console.log("LOGIN RESULT:", result);
-
       const role = result.data.user.role;
-      console.log("LOGIN ROLE:", role);
     } catch (error: any) {
       console.log("LOGIN ERROR:", error);
 

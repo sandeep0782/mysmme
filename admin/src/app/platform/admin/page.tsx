@@ -57,8 +57,6 @@ const AdminDashboard = () => {
   const { data: usersResponse, isLoading, isError } = useGetUsersQuery({});
   const user = usersResponse?.data ?? [];
   const userCount = user.length;
-  console.log(userCount);
-
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Main */}

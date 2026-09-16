@@ -368,11 +368,6 @@ const Page = () => {
           userData.password = data.password.trim();
         }
 
-        console.log("Updating user:", {
-          userId: editingUser._id,
-          userData,
-        });
-
         await updateUser({
           userId: editingUser._id,
           userData,
@@ -400,18 +395,12 @@ const Page = () => {
         password: data.password?.trim(),
       };
 
-      console.log("Adding user:", userData);
-
       await addUser(userData).unwrap();
 
       setIsAddModalOpen(false);
       resetUserForm();
     } catch (error: any) {
       console.error("Failed to save user:", error);
-      console.error("Error JSON:", JSON.stringify(error, null, 2));
-      console.error("Error message:", error?.message);
-      console.error("Error response:", error?.response);
-      console.error("Error data:", error?.data);
 
       setSaveError(
         error?.data?.message ||
@@ -433,8 +422,6 @@ const Page = () => {
       setSaveError("User ID is missing.");
       return;
     }
-
-    console.log("Editing user:", user);
 
     setEditingUser(user);
 

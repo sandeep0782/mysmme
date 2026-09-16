@@ -401,15 +401,6 @@ const SellerOrderDetailsPage = () => {
   const status = normalizeOrderStatus(rawStatus);
   const currentIndex = statusOrder.indexOf(status);
 
-  console.log("========== DETAIL STATUS ==========");
-  console.log("SELLER ORDER:", order);
-  console.log("SELLER ORDER STATUS:", order?.status);
-  console.log("PARENT ORDER:", order?.order);
-  console.log("PARENT ORDER STATUS:", order?.order?.status);
-  console.log("RAW STATUS USED:", rawStatus);
-  console.log("FINAL STATUS:", status);
-  console.log("CURRENT INDEX:", currentIndex);
-  console.log("==================================");
   /* ================================================================
      UPDATE STATUS
   ================================================================ */

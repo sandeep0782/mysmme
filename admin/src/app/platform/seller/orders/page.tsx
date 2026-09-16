@@ -179,13 +179,6 @@ const orders: Order[] = useMemo(() => {
     const status: OrderStatus =
       statusMap[rawStatus || ""] || "PENDING";
 
-    console.log("========== FINAL ORDER ==========");
-    console.log("RAW STATUS:", sellerOrder.status);
-    console.log("FINAL STATUS:", status);
-    console.log("RAW PAYMENT:", order?.paymentStatus);
-    console.log("FINAL PAYMENT:", paymentStatus);
-    console.log("================================");
-
     return {
       id: sellerOrder._id,
 

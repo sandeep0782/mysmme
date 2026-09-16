@@ -371,6 +371,36 @@ const Page = () => {
   //   }
   // };
 
+  const getImportErrorMessage = (item: ProductImport) => {
+    if (!item.importErrors?.length) {
+      if (item.status === "failed") {
+        return "Import failed, but no validation reason was provided.";
+      }
+
+      return "—";
+    }
+
+    const firstError = item.importErrors[0];
+
+    if (typeof firstError === "string") {
+      return firstError;
+    }
+
+    if (typeof firstError === "object" && firstError !== null) {
+      const error = firstError as Record<string, unknown>;
+
+      return String(
+        error.message ??
+          error.error ??
+          error.reason ??
+          error.description ??
+          "Validation failed",
+      );
+    }
+
+    return "Validation failed";
+  };
+
   return (
     <div className="h-full bg-slate-50">
       <main className="px-4 py-6 sm:px-6 lg:px-8">

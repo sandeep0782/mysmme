@@ -57,7 +57,7 @@ interface UserFormData {
   password?: string;
 }
 
-type GstBusinessData = {
+type GstApiData = {
   gstin: string;
   legal_name: string;
   trade_name: string;
@@ -65,9 +65,13 @@ type GstBusinessData = {
   constitution: string;
   taxpayer_type: string;
   registration_date: string;
+  last_updated?: string;
   state: string;
+  state_code: string;
   pan: string;
   address: string;
+  district: string;
+  pincode: string;
   nature_of_business: string[];
 };
 
@@ -75,8 +79,26 @@ type GstVerifyResponse = {
   success: boolean;
   cached?: boolean;
   credits_remaining?: number;
-  data?: GstBusinessData;
+  data?: GstApiData;
   message?: string;
+};
+
+type GstBusinessData = {
+  gstNumber: string;
+  gstStatus: string;
+  sellerName: string;
+  businessName: string;
+  businessType: string;
+  panNumber: string;
+  storeName: string;
+  address: string;
+  city: string;
+  state: string;
+  pincode: string;
+  country: string;
+  registrationDate: string;
+  taxpayerType: string;
+  natureOfBusiness: string[];
 };
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
@@ -149,6 +171,10 @@ const Page = () => {
 
   const [openActionId, setOpenActionId] = useState<string | null>(null);
   const router = useRouter();
+
+  const [sellerEmail, setSellerEmail] = useState("");
+  const [sellerPhone, setSellerPhone] = useState("");
+
   // ============================================================
   // API
   // ============================================================
@@ -355,6 +381,9 @@ const Page = () => {
     setGstin("");
     setGstError("");
     setVerifiedGst(null);
+
+    setSellerEmail("");
+    setSellerPhone("");
   };
 
   // ============================================================
@@ -402,9 +431,7 @@ const Page = () => {
       setIsVerifyingGst(true);
 
       const response = await fetch(
-        `${API_URL}/v1/gst-verification/${encodeURIComponent(
-          normalizedGstin,
-        )}`,
+        `${API_URL}/v1/verify/${encodeURIComponent(normalizedGstin)}`,
         {
           method: "GET",
           headers: {
@@ -419,16 +446,45 @@ const Page = () => {
         throw new Error(result.message || "GST verification failed.");
       }
 
-      if (result.data.status?.toLowerCase() !== "active") {
+      const apiGst = result.data;
+
+      // IMPORTANT:
+      // GSTVerify returns `status`, not `gstStatus`.
+      const gstStatus = String(apiGst.status ?? "")
+        .trim()
+        .toUpperCase();
+
+      if (gstStatus !== "ACTIVE") {
         setGstError(
-          `GSTIN is ${result.data.status || "not active"}. Only active GST registrations can be added.`,
+          `GSTIN is ${apiGst.status || "not active"}. Only active GST registrations can be added.`,
         );
         return;
       }
 
-      setGstin(result.data.gstin || normalizedGstin);
-      setVerifiedGst(result.data);
+      // Map GSTVerify response -> frontend model
+      const mappedGst: GstBusinessData = {
+        gstNumber: apiGst.gstin,
+        gstStatus: apiGst.status,
+        sellerName: apiGst.legal_name,
+        businessName: apiGst.trade_name,
+        businessType: apiGst.constitution,
+        panNumber: apiGst.pan,
+        storeName: apiGst.trade_name || apiGst.legal_name,
+        address: apiGst.address,
+        city: apiGst.district,
+        state: apiGst.state,
+        pincode: apiGst.pincode,
+        country: "India",
+        registrationDate: apiGst.registration_date,
+        taxpayerType: apiGst.taxpayer_type,
+        natureOfBusiness: apiGst.nature_of_business ?? [],
+      };
+
+      setGstin(mappedGst.gstNumber);
+      setVerifiedGst(mappedGst);
     } catch (error: any) {
+      console.error("GST verification error:", error);
+
       setGstError(
         error?.message || "Unable to verify GSTIN. Please try again.",
       );
@@ -443,37 +499,65 @@ const Page = () => {
       return;
     }
 
+    const email = sellerEmail.trim().toLowerCase();
+    const phone = sellerPhone.trim();
+
     setSaveError("");
+    setGstError("");
+
+    if (!email) {
+      setSaveError("Seller email is required.");
+      return;
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setSaveError("Please enter a valid seller email address.");
+      return;
+    }
 
     try {
       const sellerData = {
-        name: verifiedGst.trade_name || verifiedGst.legal_name,
+        // User fields
+        name:
+          verifiedGst.storeName ||
+          verifiedGst.businessName ||
+          verifiedGst.sellerName,
+        email,
+        phone,
         role: "seller",
         isActive: true,
-        gstin: verifiedGst.gstin,
-        legal_name: verifiedGst.legal_name,
-        trade_name: verifiedGst.trade_name,
-        gst_status: verifiedGst.status,
-        constitution: verifiedGst.constitution,
-        taxpayer_type: verifiedGst.taxpayer_type,
-        registration_date: verifiedGst.registration_date,
+
+        // GST fields
+        gstin: verifiedGst.gstNumber,
+        legal_name: verifiedGst.sellerName,
+        trade_name: verifiedGst.businessName,
+        gst_status: verifiedGst.gstStatus,
+        constitution: verifiedGst.businessType,
+        taxpayer_type: verifiedGst.taxpayerType,
+        registration_date: verifiedGst.registrationDate,
+
+        // Address / business information
         state: verifiedGst.state,
-        pan: verifiedGst.pan,
+        pan: verifiedGst.panNumber,
         address: verifiedGst.address,
-        nature_of_business: verifiedGst.nature_of_business,
+        nature_of_business: verifiedGst.natureOfBusiness,
       };
 
-      await addUser(sellerData).unwrap();
+      const result = await addUser(sellerData).unwrap();
 
       setIsAddModalOpen(false);
       resetUserForm();
     } catch (error: any) {
-      setSaveError(
+      console.error("Full error:", error);
+
+      const backendMessage =
         error?.data?.message ||
-          error?.response?.data?.message ||
-          error?.message ||
-          "Failed to add seller.",
-      );
+        error?.data?.error ||
+        error?.data?.errors?.[0]?.message ||
+        error?.message ||
+        "Failed to add seller.";
+
+      setSaveError(backendMessage);
     }
   };
 
@@ -531,10 +615,6 @@ const Page = () => {
       return;
     } catch (error: any) {
       console.error("Failed to save seller:", error);
-      console.error("Error JSON:", JSON.stringify(error, null, 2));
-      console.error("Error message:", error?.message);
-      console.error("Error response:", error?.response);
-      console.error("Error data:", error?.data);
 
       setSaveError(
         error?.data?.message ||
@@ -617,8 +697,6 @@ const Page = () => {
     setDeleteError("");
 
     try {
-      console.log("Deleting seller:", userToDelete._id);
-
       await deleteUser(userToDelete._id).unwrap();
 
       setIsDeleteModalOpen(false);
@@ -1563,73 +1641,127 @@ const Page = () => {
                   )}
 
                   {verifiedGst && (
-                    <div className="mt-6 overflow-hidden rounded-2xl border border-emerald-200 bg-emerald-50/40">
-                      <div className="flex items-start gap-3 border-b border-emerald-100 bg-emerald-50 px-5 py-4">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
-                          <CheckCircle2 className="h-5 w-5" />
+                    <>
+                      <div className="mt-6 overflow-hidden rounded-2xl border border-emerald-200 bg-emerald-50/40">
+                        <div className="flex items-start gap-3 border-b border-emerald-100 bg-emerald-50 px-5 py-4">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
+                            <CheckCircle2 className="h-5 w-5" />
+                          </div>
+                          <div>
+                            <p className="font-semibold text-emerald-900">
+                              GST verified successfully
+                            </p>
+                            <p className="mt-0.5 text-xs text-emerald-700">
+                              The seller's registered GST details are shown
+                              below.
+                            </p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="font-semibold text-emerald-900">
-                            GST verified successfully
-                          </p>
-                          <p className="mt-0.5 text-xs text-emerald-700">
-                            The seller's registered GST details are shown below.
-                          </p>
-                        </div>
-                      </div>
 
-                      <div className="grid gap-x-6 gap-y-4 bg-white p-5 sm:grid-cols-2">
-                        {[
-                          ["GSTIN", verifiedGst.gstin],
-                          ["Status", verifiedGst.status],
-                          ["Legal Name", verifiedGst.legal_name],
-                          ["Trade Name", verifiedGst.trade_name || "—"],
-                          ["Constitution", verifiedGst.constitution],
-                          ["Taxpayer Type", verifiedGst.taxpayer_type],
-                          ["Registration Date", verifiedGst.registration_date],
-                          ["State", verifiedGst.state],
-                          ["PAN", verifiedGst.pan],
-                        ].map(([label, value]) => (
-                          <div key={label}>
+                        <div className="grid gap-x-6 gap-y-4 bg-white p-5 sm:grid-cols-2">
+                          {[
+                            ["GSTIN", verifiedGst.gstNumber],
+                            ["Status", verifiedGst.gstStatus],
+                            ["Legal Name", verifiedGst.sellerName],
+                            ["Trade Name", verifiedGst.businessName || "—"],
+                            ["Constitution", verifiedGst.businessType],
+                            ["Taxpayer Type", verifiedGst.taxpayerType],
+                            ["Registration Date", verifiedGst.registrationDate],
+                            ["State", verifiedGst.state],
+                            ["PAN", verifiedGst.panNumber],
+                          ].map(([label, value]) => (
+                            <div key={label}>
+                              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                                {label}
+                              </p>
+
+                              <p className="mt-1 break-words text-sm font-medium text-slate-800">
+                                {value || "—"}
+                              </p>
+                            </div>
+                          ))}
+
+                          <div className="sm:col-span-2">
                             <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                              {label}
+                              Registered Address
                             </p>
-                            <p className="mt-1 break-words text-sm font-medium text-slate-800">
-                              {value || "—"}
+                            <p className="mt-1 text-sm leading-6 text-slate-700">
+                              {verifiedGst.address || "—"}
                             </p>
                           </div>
-                        ))}
 
-                        <div className="sm:col-span-2">
-                          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                            Registered Address
-                          </p>
-                          <p className="mt-1 text-sm leading-6 text-slate-700">
-                            {verifiedGst.address || "—"}
-                          </p>
-                        </div>
-
-                        <div className="sm:col-span-2">
-                          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                            Nature of Business
-                          </p>
-                          <div className="mt-2 flex flex-wrap gap-2">
-                            {(verifiedGst.nature_of_business || []).length ? (
-                              verifiedGst.nature_of_business.map((item) => (
-                                <span
-                                  key={item}
-                                  className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600"
-                                >
-                                  {item}
+                          <div className="sm:col-span-2">
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                              Nature of Business
+                            </p>
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              {(verifiedGst.natureOfBusiness || []).length ? (
+                                verifiedGst.natureOfBusiness.map((item) => (
+                                  <span
+                                    key={item}
+                                    className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600"
+                                  >
+                                    {item}
+                                  </span>
+                                ))
+                              ) : (
+                                <span className="text-sm text-slate-400">
+                                  —
                                 </span>
-                              ))
-                            ) : (
-                              <span className="text-sm text-slate-400">—</span>
-                            )}
+                              )}
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
+                      <div className="mt-6 grid gap-5 sm:grid-cols-2">
+                        <div>
+                          <label
+                            htmlFor="seller-email"
+                            className="mb-2 block text-sm font-semibold text-slate-700"
+                          >
+                            Seller Email{" "}
+                            <span className="text-rose-500">*</span>
+                          </label>
+
+                          <input
+                            id="seller-email"
+                            type="email"
+                            value={sellerEmail}
+                            onChange={(event) => {
+                              setSellerEmail(event.target.value);
+                              setSaveError("");
+                            }}
+                            placeholder="seller@example.com"
+                            disabled={isModalBusy}
+                            autoComplete="email"
+                            className="h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-rose-400 focus:ring-4 focus:ring-rose-500/10 disabled:bg-slate-50"
+                          />
+                        </div>
+
+                        <div>
+                          <label
+                            htmlFor="seller-phone"
+                            className="mb-2 block text-sm font-semibold text-slate-700"
+                          >
+                            Seller Phone
+                          </label>
+
+                          <input
+                            id="seller-phone"
+                            type="tel"
+                            value={sellerPhone}
+                            onChange={(event) => {
+                              setSellerPhone(event.target.value);
+                              setSaveError("");
+                            }}
+                            placeholder="9876543210"
+                            disabled={isModalBusy}
+                            autoComplete="tel"
+                            className="h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none focus:border-rose-400 focus:ring-4 focus:ring-rose-500/10 disabled:bg-slate-50"
+                          />
+                        </div>
+                      </div>
+                    </>
                   )}
                 </div>
 
