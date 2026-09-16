@@ -183,6 +183,10 @@ export const generateProductImportTemplate = async (
   // HEADER
   // ============================================================
 
+  // ============================================================
+  // HEADER
+  // ============================================================
+
   const headerRow = worksheet.getRow(1);
 
   headerRow.height = 32;
@@ -213,35 +217,40 @@ export const generateProductImportTemplate = async (
       },
     };
 
+    // No background
     cell.fill = {
       type: "pattern",
-      pattern: "solid",
-      fgColor: { argb: RED },
+      pattern: "none",
     };
 
+    // Normal header text = red
     cell.font = {
       bold: true,
-      color: { argb: "FFFFFF" },
+      color: { argb: RED },
       size: 11,
     };
   });
 
-  // Required headers
+  // ============================================================
+  // REQUIRED HEADERS
+  // ============================================================
+
+  const REQUIRED_GREEN = "16A34A";
+
   columns.forEach((column, index) => {
     const cell = worksheet.getCell(1, index + 1);
 
-    const REQUIRED_GREEN = "16A34A";
-
     if (REQUIRED_HEADERS.has(column.key)) {
+      // No background
       cell.fill = {
         type: "pattern",
-        pattern: "solid",
-        fgColor: { argb: REQUIRED_GREEN },
+        pattern: "none",
       };
 
+      // Required header text = green
       cell.font = {
         bold: true,
-        color: { argb: "FFFFFF" },
+        color: { argb: REQUIRED_GREEN },
         size: 11,
       };
     }

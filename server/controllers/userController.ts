@@ -1,6 +1,8 @@
 import { Request, Response, Router } from "express";
 import { response } from "../utils/responseHandler";
 import User from "../models/User";
+import crypto from "crypto";
+import { sendSellerWelcomeEmail } from "../config/emailConfig";
 
 const router = Router();
 
@@ -51,8 +53,7 @@ export const getAllUsers = async (req: Request, res: Response) => {
 
 export const addUser = async (req: Request, res: Response) => {
   try {
-    const { name, email, phoneNumber, password, role, isActive, isVerified } =
-      req.body;
+    const { name, email, phoneNumber, role, isActive, isVerified } = req.body;
 
     // ----------------------------------------------------------
     // VALIDATION
@@ -66,13 +67,14 @@ export const addUser = async (req: Request, res: Response) => {
       return response(res, 400, "Email is required.");
     }
 
-    if (!password) {
-      return response(res, 400, "Password is required.");
-    }
+    // if (!password) {
+    //   return response(res, 400, "Password is required.");
+    // }
 
-    if (password.length < 6) {
-      return response(res, 400, "Password must be at least 6 characters long.");
-    }
+    // if (password.length < 6) {
+    //   return response(res, 400, "Password must be at least 6 characters long.");
+    // }
+    const password = crypto.randomBytes(9).toString("base64url");
 
     const normalizedEmail = email.toLowerCase().trim();
 
@@ -96,12 +98,20 @@ export const addUser = async (req: Request, res: Response) => {
       name: name.trim(),
       email: normalizedEmail,
       phoneNumber: phoneNumber || undefined,
-      password,
+      password: crypto.randomBytes(32).toString("hex"),
       role: role || "user",
+      isActive: isActive !== undefined ? isActive : true,
       isVerified: isVerified !== undefined ? isVerified : false,
     });
 
-    // ----------------------------------------------------------
+    // Send welcome email
+    try {
+      await sendSellerWelcomeEmail(user.email, user.name);
+
+      console.log(`SELLER WELCOME EMAIL SENT SUCCESSFULLY: ${user.email}`);
+    } catch (emailError) {
+      console.error(`SELLER WELCOME EMAIL FAILED: ${user.email}`, emailError);
+    } // ----------------------------------------------------------
     // REMOVE SENSITIVE DATA
     // ----------------------------------------------------------
 
@@ -110,10 +120,10 @@ export const addUser = async (req: Request, res: Response) => {
     );
 
     return response(res, 201, "User created successfully.", createdUser);
-  } catch (error) {
+  } catch (error: any) {
     console.error("Add user error:", error);
 
-    return response(res, 500, "Internal server error.", error);
+    return response(res, 500, "Internal server error.", error?.message);
   }
 };
 
@@ -224,19 +234,13 @@ export const updateUser = async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error("Failed to save user:", error);
 
-    if (error?.data) {
-      console.error("API error data:", error.data);
-    }
-
-    if (error?.status) {
-      console.error("API error status:", error.status);
-    }
-
     const message =
       error?.data?.message ||
       error?.data?.error ||
-      error?.error ||
+      error?.message ||
       "Failed to save user. Please check the information and try again.";
+
+    return response(res, 500, message);
   }
 };
 
@@ -268,8 +272,6 @@ export const deleteUser = async (req: Request, res: Response) => {
   }
 };
 
-
 // ============================================================
 // IMPORT USERS FROM EXCEL
 // ============================================================
-

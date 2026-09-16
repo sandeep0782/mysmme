@@ -25,13 +25,14 @@ export interface IUser extends Document {
   loginAttempts?: number;
   lockUntil?: Date;
   role: UserRole;
+  isActive: boolean;
 }
 
 const userSchema = new Schema<IUser>(
   {
     name: { type: String, required: true },
     email: { type: String, required: true, unique: true },
-    password: { type: String, select: false, },
+    password: { type: String, select: false },
     googleId: { type: String },
     profilePicture: { type: String, default: null },
     phoneNumber: { type: String, default: null },
@@ -48,20 +49,20 @@ const userSchema = new Schema<IUser>(
     },
     loginAttempts: { type: Number, default: 0 },
     lockUntil: { type: Date },
+    isActive: { type: Boolean, default: true },
   },
-  { timestamps: true }
+
+  { timestamps: true },
 );
 
 userSchema.pre("save", async function () {
-  if (!this.isModified("password"))
-    return;
+  if (!this.isModified("password")) return;
   const salt = await bcrypt.genSalt(10);
   this.password = await bcrypt.hash(this.password!, salt);
-
 });
 
 userSchema.methods.comparePassword = async function (
-  candidatePassword: string
+  candidatePassword: string,
 ): Promise<boolean> {
   return bcrypt.compare(candidatePassword, this.password!);
 };

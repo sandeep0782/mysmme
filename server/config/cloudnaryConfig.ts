@@ -62,6 +62,7 @@ export const uploadImageUrlToCloudinary = async (
 ): Promise<{
   url: string;
   hash: string;
+  publicId: string;
 }> => {
   if (!imageUrl) {
     throw new Error("Image URL is required");
@@ -102,15 +103,14 @@ export const uploadImageUrlToCloudinary = async (
       headers: {
         "User-Agent":
           "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36",
+
         Accept:
-          "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+          "image/avif,image/webp,image/apng,image/svg+xml,image/jpeg,image/png,image/*,*/*;q=0.8",
       },
     });
   } catch (error) {
     if ((error as Error)?.name === "AbortError") {
-      throw new Error(
-        `Image download timed out after 30 seconds: ${imageUrl}`,
-      );
+      throw new Error(`Image download timed out after 30 seconds: ${imageUrl}`);
     }
 
     throw new Error(
@@ -133,22 +133,34 @@ export const uploadImageUrlToCloudinary = async (
   }
 
   // ----------------------------------------------------------
-  // CHECK CONTENT TYPE
+  // READ CONTENT TYPE
   // ----------------------------------------------------------
 
-  const contentType = response.headers.get("content-type") || "";
+  const contentType = (
+    response.headers.get("content-type") || ""
+  ).toLowerCase();
 
-  if (!contentType.startsWith("image/")) {
-    throw new Error(
-      `URL did not return an image. Content-Type: ${contentType}`,
-    );
-  }
+  console.log("IMAGE HTTP RESPONSE", {
+    imageUrl,
+    status: response.status,
+    contentType,
+  });
 
   // ----------------------------------------------------------
   // DOWNLOAD INTO BUFFER
+  //
+  // IMPORTANT:
+  // Do NOT reject application/octet-stream here.
+  //
+  // Some image/CDN servers incorrectly return:
+  //
+  // application/octet-stream
+  //
+  // even when the actual bytes are a valid JPEG/PNG/WebP.
   // ----------------------------------------------------------
 
   const arrayBuffer = await response.arrayBuffer();
+
   const buffer = Buffer.from(arrayBuffer);
 
   if (!buffer.length) {
@@ -170,7 +182,20 @@ export const uploadImageUrlToCloudinary = async (
   }
 
   // ----------------------------------------------------------
-  // READ IMAGE METADATA
+  // VERIFY ACTUAL FILE TYPE USING SHARP
+  // ----------------------------------------------------------
+  //
+  // This is now the real image validation.
+  //
+  // We don't rely only on HTTP Content-Type.
+  //
+  // If the server says:
+  //
+  // application/octet-stream
+  //
+  // but the bytes are a valid JPEG, sharp will recognize it.
+  //
+  // If the server returns HTML/JSON/etc., sharp will fail.
   // ----------------------------------------------------------
 
   let metadata: sharp.Metadata;
@@ -180,14 +205,52 @@ export const uploadImageUrlToCloudinary = async (
       failOn: "none",
     }).metadata();
   } catch {
-    throw new Error(`Unable to read image: ${imageUrl}`);
+    throw new Error(
+      `Downloaded file is not a valid image. Content-Type: ${
+        contentType || "unknown"
+      }`,
+    );
   }
+
+  // ----------------------------------------------------------
+  // VERIFY IMAGE FORMAT
+  // ----------------------------------------------------------
+
+  const supportedFormats = new Set([
+    "jpeg",
+    "png",
+    "webp",
+    "avif",
+    "gif",
+    "tiff",
+  ]);
+
+  if (!metadata.format || !supportedFormats.has(metadata.format)) {
+    throw new Error(
+      `Unsupported image format: ${
+        metadata.format || "unknown"
+      }. Content-Type: ${contentType || "unknown"}`,
+    );
+  }
+
+  console.log("IMAGE FORMAT DETECTED", {
+    imageUrl,
+    contentType,
+    format: metadata.format,
+    width: metadata.width,
+    height: metadata.height,
+    size: buffer.length,
+  });
+
+  // ----------------------------------------------------------
+  // IMAGE DIMENSIONS
+  // ----------------------------------------------------------
 
   const width = metadata.width;
   const height = metadata.height;
 
   if (!width || !height) {
-    throw new Error("Unable to determine image dimensions");
+    throw new Error(`Unable to determine image dimensions: ${imageUrl}`);
   }
 
   // ----------------------------------------------------------
@@ -212,25 +275,29 @@ export const uploadImageUrlToCloudinary = async (
   // ==========================================================
   // IMPORTANT:
   // DO NOT RESIZE, CROP, ROTATE OR RE-ENCODE THE IMAGE.
-  // Upload the original buffer exactly as downloaded.
+  //
+  // Upload the original bytes exactly as downloaded.
   // ==========================================================
 
   const uploadBuffer = buffer;
 
-  // ==========================================================
+  // ----------------------------------------------------------
   // NUDITY / NSFW CHECK
-  // ==========================================================
+  // ----------------------------------------------------------
 
   const nudityCheck = await checkImageForNudity(uploadBuffer);
 
   if (!nudityCheck.safe) {
-    throw new Error(
-      "Image rejected: potentially explicit content detected",
-    );
+    throw new Error("Image rejected: potentially explicit content detected");
   }
 
   // ----------------------------------------------------------
   // IMAGE HASH
+  // ----------------------------------------------------------
+  //
+  // Hash the ORIGINAL downloaded bytes.
+  //
+  // This means identical files produce identical hashes.
   // ----------------------------------------------------------
 
   const imageHash = crypto
@@ -242,10 +309,7 @@ export const uploadImageUrlToCloudinary = async (
   // CREATE STABLE PUBLIC ID
   // ----------------------------------------------------------
 
-  const sourceHash = crypto
-    .createHash("sha1")
-    .update(imageUrl)
-    .digest("hex");
+  const sourceHash = crypto.createHash("sha1").update(imageUrl).digest("hex");
 
   const publicId = `product-${sourceHash}`;
 
@@ -261,28 +325,24 @@ export const uploadImageUrlToCloudinary = async (
     invalidate: true,
   };
 
-  const result = await new Promise<UploadApiResponse>(
-    (resolve, reject) => {
-      const uploadStream = cloudinary.uploader.upload_stream(
-        uploadOptions,
-        (error, result) => {
-          if (error) {
-            return reject(error);
-          }
+  const result = await new Promise<UploadApiResponse>((resolve, reject) => {
+    const uploadStream = cloudinary.uploader.upload_stream(
+      uploadOptions,
+      (error, result) => {
+        if (error) {
+          return reject(error);
+        }
 
-          if (!result) {
-            return reject(
-              new Error("Cloudinary upload returned no result"),
-            );
-          }
+        if (!result) {
+          return reject(new Error("Cloudinary upload returned no result"));
+        }
 
-          resolve(result);
-        },
-      );
+        resolve(result);
+      },
+    );
 
-      uploadStream.end(uploadBuffer);
-    },
-  );
+    uploadStream.end(uploadBuffer);
+  });
 
   console.log("CLOUDINARY UPLOAD", {
     publicId: result.public_id,
@@ -295,18 +355,20 @@ export const uploadImageUrlToCloudinary = async (
   // VERIFY CLOUDINARY DID NOT CHANGE DIMENSIONS
   // ----------------------------------------------------------
 
-  if (
-    result.width !== REQUIRED_WIDTH ||
-    result.height !== REQUIRED_HEIGHT
-  ) {
+  if (result.width !== REQUIRED_WIDTH || result.height !== REQUIRED_HEIGHT) {
     throw new Error(
       `Uploaded image dimensions are incorrect. Expected ${REQUIRED_WIDTH}x${REQUIRED_HEIGHT}px but Cloudinary returned ${result.width}x${result.height}px.`,
     );
   }
 
+  // ----------------------------------------------------------
+  // RETURN
+  // ----------------------------------------------------------
+
   return {
     url: result.secure_url,
     hash: imageHash,
+    publicId: result.public_id,
   };
 };
 

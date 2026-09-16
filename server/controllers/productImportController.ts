@@ -1,11 +1,13 @@
 import { Request, Response } from "express";
-
-import ProductImport from "../models/ProductImport";
-import fs from "fs/promises";
-import path from "path";
+import * as XLSX from "xlsx";
 import { Types } from "mongoose";
 
+import ProductImport from "../models/ProductImport";
 import { response } from "../utils/responseHandler";
+
+// ================================================================
+// GET PRODUCT IMPORTS
+// ================================================================
 
 export const getProductImports = async (
   req: Request,
@@ -13,18 +15,20 @@ export const getProductImports = async (
 ): Promise<void> => {
   try {
     const { status, search } = req.query;
+
     const filter: Record<string, unknown> = {};
 
-    if (status && status !== "all") {
+    if (typeof status === "string" && status !== "all") {
       filter.status = status;
     }
 
-    if (search && typeof search === "string" && search.trim()) {
+    if (typeof search === "string" && search.trim()) {
       filter.fileName = {
         $regex: search.trim(),
         $options: "i",
       };
     }
+
     const imports = await ProductImport.find(filter)
       .populate({
         path: "uploadedBy",
@@ -32,14 +36,16 @@ export const getProductImports = async (
       })
       .sort({ createdAt: -1 })
       .lean();
-    return response(res, 200, "Product imports fetched successfully", imports);
+
+    response(res, 200, "Product imports fetched successfully", imports);
+
+    return;
   } catch (error) {
     console.error("Failed to fetch product imports:", error);
 
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch product imports",
-    });
+    response(res, 500, "Failed to fetch product imports");
+
+    return;
   }
 };
 
@@ -52,36 +58,34 @@ export const uploadProductExcel = async (
   res: Response,
 ): Promise<void> => {
   try {
-    // ============================================================
-    // FILE VALIDATION
-    // ============================================================
+    // ------------------------------------------------------------
+    // FILE
+    // ------------------------------------------------------------
 
     if (!req.file) {
-      return response(res, 400, "Excel file is required");
+      response(res, 400, "Excel file is required");
+      return;
     }
 
-    // ============================================================
+    // ------------------------------------------------------------
     // USER
-    // ============================================================
+    // ------------------------------------------------------------
 
-    /*
-     * Change this according to your authentication middleware.
-     *
-     * For example:
-     * req.user._id
-     *
-     * If your req.user is typed differently, we should update
-     * the Express Request type instead of using `any`.
-     */
     const uploadedBy = req.id;
 
     if (!uploadedBy) {
-      return response(res, 401, "unauthorised");
+      response(res, 401, "Unauthorized");
+      return;
     }
 
-    // ============================================================
-    // FILE TYPE VALIDATION
-    // ============================================================
+    if (!Types.ObjectId.isValid(uploadedBy)) {
+      response(res, 401, "Invalid user ID");
+      return;
+    }
+
+    // ------------------------------------------------------------
+    // FILE TYPE
+    // ------------------------------------------------------------
 
     const allowedMimeTypes = [
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -90,48 +94,41 @@ export const uploadProductExcel = async (
 
     const allowedExtensions = [".xlsx", ".xls"];
 
-    const extension = req.file.originalname
-      .substring(req.file.originalname.lastIndexOf("."))
+    const originalName = req.file.originalname;
+
+    const extension = originalName
+      .substring(originalName.lastIndexOf("."))
       .toLowerCase();
 
-    const isValidMimeType = allowedMimeTypes.includes(req.file.mimetype);
-    const isValidExtension = allowedExtensions.includes(extension);
+    const validMimeType = allowedMimeTypes.includes(req.file.mimetype);
 
-    if (!isValidMimeType || !isValidExtension) {
-      res.status(400).json({
-        success: false,
-        message: "Only Excel files (.xlsx and .xls) are allowed",
-      });
+    const validExtension = allowedExtensions.includes(extension);
+
+    if (!validMimeType || !validExtension) {
+      response(res, 400, "Only Excel files (.xlsx and .xls) are allowed");
 
       return;
     }
 
-    // ============================================================
-    // IMPORT GROUP
-    // ============================================================
+    // ------------------------------------------------------------
+    // FILE PATH
+    // ------------------------------------------------------------
 
-    const importGroupId = new Types.ObjectId();
-
-    // ============================================================
-    // FILE URL
-    // ============================================================
-
-    /*
-     * This assumes Multer is using local disk storage.
-     *
-     * If you're using Cloudinary/S3/etc., replace this with
-     * the URL returned by your storage provider.
-     */
     const fileUrl = req.file.path;
 
-    // ============================================================
+    if (!fileUrl) {
+      response(res, 400, "Uploaded file path is missing");
+      return;
+    }
+
+    // ------------------------------------------------------------
     // CREATE IMPORT
-    // ============================================================
+    // ------------------------------------------------------------
 
     const productImport = await ProductImport.create({
-      importGroupId,
+      importGroupId: new Types.ObjectId(),
 
-      fileName: req.file.originalname,
+      fileName: originalName,
 
       fileUrl,
 
@@ -140,34 +137,48 @@ export const uploadProductExcel = async (
       mimeType: req.file.mimetype,
 
       totalRows: 0,
+
       processedRows: 0,
+
       successRows: 0,
+
       failedRows: 0,
+
+      importErrors: [],
+
+      workerScope: process.env.PRODUCT_IMPORT_WORKER_SCOPE || "local",
+
+      attempts: 0,
 
       status: "uploaded",
 
-      uploadedBy,
+      processingStage: "waiting",
 
-      startedAt: undefined,
-      completedAt: undefined,
+      processingRow: 0,
+
+      processingSku: "",
+
+      processingProductName: "",
+
+      failureReason: null,
+
+      uploadedBy: new Types.ObjectId(uploadedBy),
     });
 
-    // ============================================================
-    // RESPONSE
-    // ============================================================
+    response(
+      res,
+      201,
+      "Product Excel file uploaded successfully",
+      productImport,
+    );
 
-    res.status(201).json({
-      success: true,
-      message: "Product Excel file uploaded successfully",
-      data: productImport,
-    });
+    return;
   } catch (error) {
     console.error("Failed to upload product Excel:", error);
 
-    res.status(500).json({
-      success: false,
-      message: "Failed to upload product Excel",
-    });
+    response(res, 500, "Failed to upload product Excel");
+
+    return;
   }
 };
 
@@ -182,143 +193,79 @@ export const deleteProductImport = async (
   try {
     const id = req.params.id;
 
-    // ============================================================
-    // VALIDATE ID
-    // ============================================================
-
+    // req.params.id can be string | string[]
     if (typeof id !== "string" || !Types.ObjectId.isValid(id)) {
-      res.status(400).json({
-        success: false,
-        message: "Invalid product import ID",
-      });
+      response(res, 400, "Invalid product import ID");
       return;
     }
-
-    // ============================================================
-    // FIND IMPORT
-    // ============================================================
 
     const productImport = await ProductImport.findById(id);
 
     if (!productImport) {
-      res.status(404).json({
-        success: false,
-        message: "Product import not found",
-      });
+      response(res, 404, "Product import not found");
       return;
     }
 
-    // ============================================================
-    // DELETE DATABASE RECORD
-    // ============================================================
-
     await ProductImport.findByIdAndDelete(id);
 
-    // ============================================================
-    // DELETE PHYSICAL FILE
-    // ============================================================
+    response(res, 200, "Product import deleted successfully");
 
-    if (productImport.fileUrl) {
-      try {
-        const filePath = path.join(
-          process.cwd(),
-          productImport.fileUrl.replace(/^[/\\]+/, ""),
-        );
-
-        await fs.unlink(filePath);
-      } catch (fileError: unknown) {
-        console.warn(
-          "Product import record deleted, but file could not be deleted:",
-          fileError,
-        );
-      }
-    }
-
-    // ============================================================
-    // DELETE ERROR FILE IF EXISTS
-    // ============================================================
-
-    if (productImport.errorFileUrl) {
-      try {
-        const errorFilePath = path.join(
-          process.cwd(),
-          productImport.errorFileUrl.replace(/^[/\\]+/, ""),
-        );
-
-        await fs.unlink(errorFilePath);
-      } catch (fileError: unknown) {
-        console.warn("Error file could not be deleted:", fileError);
-      }
-    }
-
-    // ============================================================
-    // RESPONSE
-    // ============================================================
-
-    res.status(200).json({
-      success: true,
-      message: "Product import deleted successfully",
-    });
+    return;
   } catch (error) {
     console.error("Failed to delete product import:", error);
 
-    res.status(500).json({
-      success: false,
-      message: "Failed to delete product import",
-    });
+    response(res, 500, "Failed to delete product import");
+
+    return;
   }
 };
 
-import * as XLSX from "xlsx";
+// ================================================================
+// DOWNLOAD PRODUCT IMPORT ERRORS
+// ================================================================
 
 export const downloadProductImportErrors = async (
   req: Request,
   res: Response,
 ): Promise<void> => {
   try {
-    const { id } = req.params;
+    const id = req.params.id;
 
-    console.log("================================");
-    console.log("DOWNLOAD ERROR FILE");
-    console.log("ID:", id);
-    console.log("================================");
-
-    if (!id || typeof id !== "string" || !/^[0-9a-fA-F]{24}$/.test(id)) {
-      res.status(400).json({
-        success: false,
-        message: "Invalid product import ID",
-      });
+    // req.params.id can be string | string[]
+    if (typeof id !== "string" || !Types.ObjectId.isValid(id)) {
+      response(res, 400, "Invalid product import ID");
       return;
     }
 
     const productImport = await ProductImport.findById(id).lean();
 
-    console.log("PRODUCT IMPORT:", productImport);
-
     if (!productImport) {
-      res.status(404).json({
-        success: false,
-        message: "Product import not found.",
-      });
+      response(res, 404, "Product import not found");
       return;
     }
 
-    console.log("IMPORT ERRORS:", productImport.importErrors);
-
-    if (!productImport.importErrors?.length) {
-      res.status(404).json({
-        success: false,
-        message: "No import errors found.",
-      });
+    if (
+      !productImport.importErrors ||
+      productImport.importErrors.length === 0
+    ) {
+      response(res, 404, "No import errors found");
       return;
     }
+
+    // ------------------------------------------------------------
+    // ERROR ROWS
+    // ------------------------------------------------------------
 
     const errors = productImport.importErrors.map((error: any) => ({
       "Excel Row": error.rowNumber ?? "",
       SKU: error.sku ?? "",
       "Product Name": error.productName ?? "",
-      Error: error.error ?? error.message ?? "Unknown error",
+      Error: error.error ?? "Unknown error",
     }));
+
+    // ------------------------------------------------------------
+    // EXCEL
+    // ------------------------------------------------------------
 
     const workbook = XLSX.utils.book_new();
 
@@ -333,12 +280,17 @@ export const downloadProductImportErrors = async (
       bookType: "xlsx",
     });
 
+    // ------------------------------------------------------------
+    // FILE NAME
+    // ------------------------------------------------------------
+
     const baseName = productImport.fileName.replace(/\.(xlsx|xls)$/i, "");
 
     const fileName = `import-errors-${baseName}.xlsx`;
 
-    console.log("GENERATED ERROR FILE:", fileName);
-    console.log("ERROR COUNT:", errors.length);
+    // ------------------------------------------------------------
+    // RESPONSE
+    // ------------------------------------------------------------
 
     res.setHeader(
       "Content-Type",
@@ -348,12 +300,13 @@ export const downloadProductImportErrors = async (
     res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
 
     res.status(200).send(buffer);
+
+    return;
   } catch (error) {
     console.error("Failed to generate import error file:", error);
 
-    res.status(500).json({
-      success: false,
-      message: "Failed to generate error file.",
-    });
+    response(res, 500, "Failed to generate error file");
+
+    return;
   }
 };

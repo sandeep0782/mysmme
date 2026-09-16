@@ -55,7 +55,7 @@ export interface IProduct extends Document {
   blouseLengthSize?: number;
 
   border?: string;
-  borderWidth?: number;
+  borderWidth?: string;
 
   colorRemarks?: string;
 
@@ -75,7 +75,7 @@ export interface IProduct extends Document {
 
   // Product Identification
   productId?: string;
-  styleId?: string;
+  styleId?: number;
   skuId?: string;
   groupId?: string;
 
@@ -97,7 +97,6 @@ export interface IProduct extends Document {
 
   // Seller
   seller: mongoose.Types.ObjectId;
-  
 
   createdAt?: Date;
   updatedAt?: Date;
@@ -315,8 +314,8 @@ const productSchema = new Schema<IProduct>(
     },
 
     borderWidth: {
-      type: Number,
-      min: 0,
+      type: String,
+      trim: true,
     },
 
     colorRemarks: {
@@ -380,8 +379,10 @@ const productSchema = new Schema<IProduct>(
     },
 
     styleId: {
-      type: String,
-      trim: true,
+      type: Number,
+      required: true,
+      min: 1,
+      index: true,
     },
 
     skuId: {

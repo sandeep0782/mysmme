@@ -33,4 +33,6 @@ router.get(
 
 router.delete("/:id", authenticateUser, deleteProductImport);
 
+router.get("/product-imports/:importId/error-file", authenticateUser);
+
 export default router;

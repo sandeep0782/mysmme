@@ -185,3 +185,293 @@ export const sendPasswordResetEmail = async (
   `;
   await sendEmail(to, "Please reset your account password", html);
 };
+
+export const sendSellerWelcomeEmail = async (to: string, name: string) => {
+  const loginUrl = `${process.env.NEXT_PUBLIC_ADMIN_URL}/login`;
+  const forgotPasswordUrl = `${process.env.NEXT_PUBLIC_ADMIN_URL}/forgot-password`;
+
+  const year = new Date().getFullYear();
+
+  const html = `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8" />
+      <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+      />
+
+      <title>Welcome to MYSMME</title>
+
+      <style>
+        body {
+          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+          background-color: #f5f7fa;
+          margin: 0;
+          padding: 0;
+          color: #333333;
+        }
+
+        .wrapper {
+          width: 100%;
+          padding: 40px 15px;
+          box-sizing: border-box;
+        }
+
+        .container {
+          max-width: 600px;
+          margin: 0 auto;
+          background-color: #ffffff;
+          border-radius: 10px;
+          overflow: hidden;
+          box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+        }
+
+        .header {
+          background-color: #4f46e5;
+          padding: 30px;
+          text-align: center;
+        }
+
+        .header h1 {
+          margin: 0;
+          color: #ffffff;
+          font-size: 26px;
+        }
+
+        .content {
+          padding: 35px 30px;
+        }
+
+        .message {
+          font-size: 16px;
+          color: #444444;
+          line-height: 1.7;
+        }
+
+        .account-box {
+          margin: 30px 0;
+          padding: 22px;
+          background-color: #f8fafc;
+          border: 1px solid #e5e7eb;
+          border-radius: 8px;
+        }
+
+        .account-box h2 {
+          margin: 0 0 20px;
+          font-size: 18px;
+          color: #222222;
+        }
+
+        .account-item {
+          margin-bottom: 15px;
+        }
+
+        .account-item:last-child {
+          margin-bottom: 0;
+        }
+
+        .label {
+          display: block;
+          font-size: 12px;
+          font-weight: 600;
+          color: #6b7280;
+          margin-bottom: 5px;
+          text-transform: uppercase;
+        }
+
+        .value {
+          display: block;
+          padding: 10px 12px;
+          background-color: #ffffff;
+          border: 1px solid #e5e7eb;
+          border-radius: 5px;
+          color: #111827;
+          font-size: 14px;
+          word-break: break-word;
+        }
+
+        .btn-container {
+          text-align: center;
+          margin: 30px 0;
+        }
+
+        .btn {
+          display: inline-block;
+          padding: 13px 25px;
+          font-size: 15px;
+          font-weight: 600;
+          color: #ffffff !important;
+          background-color: #4f46e5;
+          text-decoration: none;
+          border-radius: 6px;
+        }
+
+        .warning {
+          margin: 25px 0;
+          padding: 15px 18px;
+          background-color: #fff7ed;
+          border-left: 4px solid #f97316;
+          border-radius: 5px;
+        }
+
+        .warning p {
+          margin: 0;
+          font-size: 14px;
+          line-height: 1.6;
+          color: #9a3412;
+        }
+
+        .footer {
+          padding: 25px 30px;
+          background-color: #f8fafc;
+          border-top: 1px solid #e5e7eb;
+          text-align: center;
+          font-size: 12px;
+          color: #999999;
+          line-height: 1.6;
+        }
+
+        @media only screen and (max-width: 600px) {
+          .wrapper {
+            padding: 20px 10px;
+          }
+
+          .content {
+            padding: 25px 20px;
+          }
+
+          .header {
+            padding: 25px 20px;
+          }
+
+          .header h1 {
+            font-size: 22px;
+          }
+        }
+      </style>
+    </head>
+
+    <body>
+
+      <div class="wrapper">
+
+        <div class="container">
+
+          <div class="header">
+            <h1>Welcome to MYSMME 🎉</h1>
+          </div>
+
+          <div class="content">
+
+            <div class="message">
+
+              <p>Hi <strong>${name}</strong>,</p>
+
+              <p>
+                Welcome to <strong>MYSMME</strong>!
+                Your seller account has been successfully created.
+              </p>
+
+              <p>
+                Your account is ready to use. You can access your
+                seller account to manage your products, orders,
+                and seller profile.
+              </p>
+
+            </div>
+
+            <div class="account-box">
+
+              <h2>Your Seller Account</h2>
+
+              <div class="account-item">
+                <span class="label">Name</span>
+                <span class="value">${name}</span>
+              </div>
+
+              <div class="account-item">
+                <span class="label">Email</span>
+                <span class="value">${to}</span>
+              </div>
+
+            </div>
+
+            <div class="warning">
+
+              <p>
+                <strong>Set your password:</strong>
+                For security reasons, a password has not been sent
+                by email. Please use the "Forgot Password" option
+                to securely create your password.
+              </p>
+
+            </div>
+
+            <div class="btn-container">
+
+              <a
+                href="${forgotPasswordUrl}"
+                class="btn"
+              >
+                Set Your Password
+              </a>
+
+            </div>
+
+            <div class="message">
+
+              <p>
+                After setting your password, you can log in using
+                your email address and newly created password.
+              </p>
+
+              <p>
+                <a href="${loginUrl}">
+                  Go to MYSMME Login
+                </a>
+              </p>
+
+              <p>
+                If you have any questions or need assistance,
+                please contact our support team.
+              </p>
+
+              <p>
+                Best regards,<br />
+                <strong>MYSMME Team</strong>
+              </p>
+
+            </div>
+
+          </div>
+
+          <div class="footer">
+            &copy; ${year} MYSMME. All rights reserved.
+            <br />
+            This email was sent because a seller account was
+            created using this email address.
+          </div>
+
+        </div>
+
+      </div>
+
+    </body>
+    </html>
+  `;
+
+  try {
+    const info = await transporter.sendMail({
+      from: `"MYSMME" <${process.env.EMAIL_USER}>`,
+      to,
+      subject: "Welcome to MYSMME - Your Seller Account Is Ready",
+      html,
+    });
+
+    return info;
+  } catch (error) {
+    throw error;
+  }
+};

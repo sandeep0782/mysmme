@@ -32,16 +32,12 @@ import { importUsersFromExcel } from "./controllers/importUserController";
 import userImportRoutes from "./routes/userImportRoutes";
 import gstVerificationRoutes from "./routes/gstVerificationRoutes";
 import sellerRoutes from "./routes/sellerRoutes";
+import careerRoutes from "./routes/careerRoutes";
 
 // Load environment variables BEFORE importing/starting
 // anything that depends on process.env.
 dotenv.config({
   path: "/Users/krishna/Desktop/mysmme/server/.env",
-});
-
-console.log("GST config:", {
-  baseUrl: process.env.GST_VERIFY_BASE_URL,
-  apiConfigured: Boolean(process.env.GST_VERIFICATION_API),
 });
 
 const PORT = Number(process.env.PORT) || 8000;
@@ -58,8 +54,6 @@ const allowedOrigins = [
   process.env.NEXT_PUBLIC_SITE_URL,
   process.env.NEXT_PUBLIC_ADMIN_URL,
 ].filter((origin): origin is string => Boolean(origin));
-
-console.log("CORS allowed origins:", allowedOrigins);
 
 const corsOptions: CorsOptions = {
   origin: (
@@ -126,51 +120,37 @@ connectDB();
 
 // -----------------------------------------------------
 // Background workers
-// -----------------------------------------------------
-
 startProductImportWorker();
+// -----------------------------------------------------
 
 // -----------------------------------------------------
 // API Routes
 // -----------------------------------------------------
 
 app.use("/api/auth", authRoute);
-
 app.use("/api/season", seasonRoutes);
 app.use("/api/brand", brandRoutes);
 app.use("/api/category", categoryRoutes);
 app.use("/api/colors", colorRoutes);
-
 app.use("/api/products", productRoute);
-
 app.use("/api/admin/templates", templateRoutes);
-
 app.use("/api/gst", gstRoutes);
-
 app.use("/api/product-attributes", productAttributeRoutes);
-
 app.use("/api/product-imports", productImportRoutes);
-
 app.use("/api/cart", cartRoutes);
 app.use("/api/wishlist", wishListRoutes);
-
 app.use("/api/order", orderRoutes);
-
 app.use("/api/users", userRoutes);
 app.use("/api/user/address", addressRoutes);
-
 app.use("/api/seller/orders", sellerOrderRoutes);
-
 app.use("/api/logistics", logisticsRoutes);
-
 app.use("/api/campaigns", campaignRoutes);
-
 app.use("/api/reels", reelRoutes);
 app.use("/api/users", userImportRoutes);
 app.use("/api/sellers", sellerRoutes);
 app.use("/api/v1/gst", gstRoutes);
-
 app.use("/api/v1/verify", gstVerificationRoutes);
+app.use("/api/careers", careerRoutes);
 
 // -----------------------------------------------------
 // Start server

@@ -1,164 +1,133 @@
-import crypto from "crypto";
 import ProductImport from "../models/ProductImport";
-import { processProductImport } from "../services/productImportService";
-
-const POLL_INTERVAL_MS = 2000;
-const STALE_JOB_TIMEOUT_MS = 30 * 60 * 1000;
-const MAX_ATTEMPTS = 3;
+import { processProductImport } from "../services/productImport/productImportService";
 
 let workerRunning = false;
+let processingJob = false;
+let timer: NodeJS.Timeout | null = null;
 
-const generateJobId = (): string => {
-  return `product-import-${crypto.randomUUID()}`;
-};
+const POLL_INTERVAL_MS = 3000;
 
-const recoverStaleJobs = async (): Promise<void> => {
-  const staleBefore = new Date(Date.now() - STALE_JOB_TIMEOUT_MS);
+// ============================================================
+// PROCESS NEXT JOB
+// ============================================================
 
-  const result = await ProductImport.updateMany(
-    {
-      status: "processing",
-      processingStartedAt: {
-        $lt: staleBefore,
-      },
-      attempts: {
-        $lt: MAX_ATTEMPTS,
-      },
-    },
-    {
-      $set: {
-        status: "uploaded",
-        processingStartedAt: undefined,
-      },
-    },
-  );
-
-  if (result.modifiedCount > 0) {
-    console.log(
-      `[ProductImportWorker] Recovered ${result.modifiedCount} stale job(s)`,
-    );
+async function processNextProductImport(): Promise<void> {
+  if (processingJob) {
+    return;
   }
-};
 
-const claimNextJob = async () => {
-  const jobId = generateJobId();
-  const now = new Date();
-
-  const job = await ProductImport.findOneAndUpdate(
-    {
-      status: "uploaded",
-      $or: [
-        {
-          attempts: {
-            $lt: MAX_ATTEMPTS,
-          },
-        },
-        {
-          attempts: {
-            $exists: false,
-          },
-        },
-      ],
-    },
-    {
-      $set: {
-        status: "processing",
-        jobId,
-        processingStartedAt: now,
-        startedAt: now,
-      },
-      $inc: {
-        attempts: 1,
-      },
-    },
-    {
-      sort: {
-        createdAt: 1,
-      },
-      returnDocument: "after",
-    },
-  );
-
-  return job;
-};
-
-const processJob = async (
-  productImportId: string,
-  jobId: string,
-): Promise<void> => {
-  console.log(
-    `[ProductImportWorker] Starting job ${jobId} for import ${productImportId}`,
-  );
+  processingJob = true;
 
   try {
-    await processProductImport(productImportId);
+    // Atomically claim one waiting upload.
+    const job = await ProductImport.findOneAndUpdate(
+      {
+        status: "uploaded",
+        processingStage: "waiting",
+        workerScope: process.env.PRODUCT_IMPORT_WORKER_SCOPE || "local",
+      },
+      {
+        $set: {
+          status: "processing",
+          processingStage: "worker_claimed",
+          startedAt: new Date(),
+          processingStartedAt: new Date(),
+          failureReason: null,
+        },
+        $inc: {
+          attempts: 1,
+        },
+      },
+      {
+        returnDocument: "after",
+        sort: {
+          createdAt: 1,
+        },
+      },
+    );
 
-    console.log(`[ProductImportWorker] Job ${jobId} completed successfully`);
-  } catch (error) {
-    console.error(`[ProductImportWorker] Job ${jobId} failed:`, error);
-
-    const productImport = await ProductImport.findById(productImportId);
-
-    if (!productImport) {
+    if (!job) {
       return;
     }
 
-    if (productImport.attempts && productImport.attempts < MAX_ATTEMPTS) {
-      await ProductImport.findByIdAndUpdate(productImportId, {
-        $set: {
-          status: "uploaded",
-          processingStartedAt: undefined,
-        },
-      });
+    console.log(
+      `[ProductImportWorker][NEW] CLAIMED id=${job._id} attempts=${job.attempts} stage=${job.processingStage} status=${job.status}`,
+    );
 
-      console.log(`[ProductImportWorker] Job ${jobId} will be retried`);
-    } else {
-      await ProductImport.findByIdAndUpdate(productImportId, {
+    console.log(
+      `[ProductImportWorker] Processing ${job._id} - ${job.fileName}`,
+    );
+
+    try {
+      await processProductImport(job._id);
+
+      console.log(
+        `[ProductImportWorker] Finished ${job._id} - ${job.fileName}`,
+      );
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Unknown import error";
+
+      console.error(
+        `[ProductImportWorker] Import ${job._id} failed: ${message}`,
+      );
+
+      // Fatal job-level failure.
+      // Row-level failures are handled by productImportService and result
+      // in completed_with_errors instead.
+      await ProductImport.findByIdAndUpdate(job._id, {
         $set: {
           status: "failed",
+          processingStage: "failed",
+          failureReason: message,
           completedAt: new Date(),
+          processingRow: 0,
+          processingSku: "",
+          processingProductName: "",
         },
       });
-
-      console.error(`[ProductImportWorker] Job ${jobId} permanently failed`);
     }
+  } catch (error) {
+    console.error("[ProductImportWorker] Worker error:", error);
+  } finally {
+    processingJob = false;
   }
-};
+}
 
-const workerLoop = async (): Promise<void> => {
+// ============================================================
+// START WORKER
+// ============================================================
+
+export function startProductImportWorker(): void {
   if (workerRunning) {
     return;
   }
 
   workerRunning = true;
 
-  console.log("[ProductImportWorker] Worker started");
+  console.log(
+    `[ProductImportWorker] Worker started (poll every ${POLL_INTERVAL_MS}ms)`,
+  );
 
-  while (workerRunning) {
-    try {
-      await recoverStaleJobs();
+  // Check immediately on startup.
+  void processNextProductImport();
 
-      const job = await claimNextJob();
+  timer = setInterval(() => {
+    void processNextProductImport();
+  }, POLL_INTERVAL_MS);
+}
 
-      if (!job) {
-        await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
+// ============================================================
+// STOP WORKER
+// ============================================================
 
-        continue;
-      }
-
-      await processJob(job._id.toString(), job.jobId!);
-    } catch (error) {
-      console.error("[ProductImportWorker] Worker loop error:", error);
-
-      await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
-    }
+export function stopProductImportWorker(): void {
+  if (timer) {
+    clearInterval(timer);
+    timer = null;
   }
-};
 
-export const startProductImportWorker = (): void => {
-  void workerLoop();
-};
-
-export const stopProductImportWorker = (): void => {
   workerRunning = false;
-};
+
+  console.log("[ProductImportWorker] Worker stopped");
+}

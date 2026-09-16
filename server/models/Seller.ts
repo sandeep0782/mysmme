@@ -3,38 +3,49 @@ import mongoose, { Schema, Document } from "mongoose";
 export interface ISeller extends Document {
   userId: mongoose.Types.ObjectId;
 
+  // Seller Information
   sellerName: string;
   businessName?: string;
   businessType?: string;
 
+  // GST Information
   gstNumber?: string;
-  gstVerified: boolean;
+  gstStatus: "ACTIVE" | "REJECTED";
   gstVerifiedAt?: Date;
 
+  // PAN Information
   panNumber?: string;
 
+  // Contact Information
   email: string;
   phone?: string;
 
+  // Address Information
   address?: string;
   city?: string;
   state?: string;
   pincode?: string;
   country: string;
 
+  // Store Information
   storeName?: string;
   storeSlug?: string;
 
+  // Platform Seller Status
   status: "PENDING" | "ACTIVE" | "SUSPENDED" | "REJECTED";
 
+  // Commission
   commissionRate: number;
 
   createdAt: Date;
   updatedAt: Date;
 }
 
-const SellerSchema: Schema = new Schema(
+const SellerSchema: Schema<ISeller> = new Schema(
   {
+    // ==========================================
+    // USER
+    // ==========================================
     userId: {
       type: Schema.Types.ObjectId,
       ref: "User",
@@ -43,7 +54,9 @@ const SellerSchema: Schema = new Schema(
       index: true,
     },
 
-    // Seller information
+    // ==========================================
+    // SELLER INFORMATION
+    // ==========================================
     sellerName: {
       type: String,
       required: true,
@@ -62,7 +75,9 @@ const SellerSchema: Schema = new Schema(
       default: "",
     },
 
-    // GST
+    // ==========================================
+    // GST INFORMATION
+    // ==========================================
     gstNumber: {
       type: String,
       unique: true,
@@ -72,25 +87,40 @@ const SellerSchema: Schema = new Schema(
       index: true,
     },
 
-    gstVerified: {
-      type: Boolean,
-      default: false,
+    /**
+     * GST verification status.
+     *
+     * This is completely separate from seller status.
+     *
+     * ACTIVE   = GST API says GST is active
+     * REJECTED = GST verification failed / GST is not active
+     */
+    gstStatus: {
+      type: String,
+      enum: ["ACTIVE", "REJECTED"],
+      default: "REJECTED",
+      index: true,
     },
 
     gstVerifiedAt: {
       type: Date,
     },
 
-    // PAN
+    // ==========================================
+    // PAN INFORMATION
+    // ==========================================
     panNumber: {
       type: String,
       unique: true,
       sparse: true,
       trim: true,
       uppercase: true,
+      index: true,
     },
 
-    // Contact
+    // ==========================================
+    // CONTACT INFORMATION
+    // ==========================================
     email: {
       type: String,
       required: true,
@@ -104,7 +134,9 @@ const SellerSchema: Schema = new Schema(
       default: "",
     },
 
-    // Address
+    // ==========================================
+    // ADDRESS INFORMATION
+    // ==========================================
     address: {
       type: String,
       default: "",
@@ -135,7 +167,9 @@ const SellerSchema: Schema = new Schema(
       trim: true,
     },
 
-    // Store
+    // ==========================================
+    // STORE INFORMATION
+    // ==========================================
     storeName: {
       type: String,
       default: "",
@@ -151,7 +185,19 @@ const SellerSchema: Schema = new Schema(
       index: true,
     },
 
-    // Seller status
+    // ==========================================
+    // SELLER PLATFORM STATUS
+    // ==========================================
+    /**
+     * This is the status of the seller on YOUR platform.
+     *
+     * PENDING   = Seller registered but not approved
+     * ACTIVE    = Seller approved and can operate
+     * SUSPENDED = Seller temporarily disabled
+     * REJECTED  = Seller rejected by admin
+     *
+     * This is independent of gstStatus.
+     */
     status: {
       type: String,
       enum: ["PENDING", "ACTIVE", "SUSPENDED", "REJECTED"],
@@ -159,7 +205,9 @@ const SellerSchema: Schema = new Schema(
       index: true,
     },
 
-    // Commission
+    // ==========================================
+    // COMMISSION
+    // ==========================================
     commissionRate: {
       type: Number,
       default: 0,
@@ -172,8 +220,10 @@ const SellerSchema: Schema = new Schema(
   },
 );
 
-// Generate store slug automatically
-SellerSchema.pre<ISeller>("validate", function (next) {
+// ==========================================
+// GENERATE STORE SLUG AUTOMATICALLY
+// ==========================================
+SellerSchema.pre<ISeller>("validate", function () {
   if (this.storeName && !this.storeSlug) {
     this.storeSlug = this.storeName
       .toLowerCase()

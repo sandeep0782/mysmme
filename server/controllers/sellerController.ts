@@ -1,114 +1,374 @@
 import { Request, Response } from "express";
 import Seller from "../models/Seller";
+import { verifyGST } from "../services/gstService";
 
-export const createSeller = async (req: Request, res: Response) => {
+// ==========================================
+// GST DATA TYPE
+// ==========================================
+
+export interface GSTData {
+  gstin: string;
+  legal_name: string;
+  trade_name: string;
+  status: string;
+  constitution: string;
+  taxpayer_type: string;
+  registration_date: string;
+  last_updated: string;
+  state: string;
+  state_code: string;
+  pan: string;
+  address: string;
+  district: string;
+  pincode: string;
+  nature_of_business: string[];
+}
+
+// ==========================================
+// VERIFY GST
+// ==========================================
+
+export const verifySellerGST = async (req: Request, res: Response) => {
   try {
-    const {
-      userId,
-      sellerName,
-      businessName,
-      businessType,
-      gstNumber,
-      panNumber,
-      email,
-      phone,
-      address,
-      city,
-      state,
-      pincode,
-      country,
-      storeName,
-      storeSlug,
-    } = req.body;
+    const { gstNumber } = req.body;
 
-    if (!userId || !sellerName || !email) {
+    // ------------------------------------------
+    // Validate GST number
+    // ------------------------------------------
+
+    if (!gstNumber) {
       return res.status(400).json({
         success: false,
-        message: "userId, sellerName and email are required",
+        message: "GST number is required",
       });
     }
 
-    // Check seller for user
-    const existingSeller = await Seller.findOne({ userId });
+    const normalizedGSTIN = String(gstNumber).trim().toUpperCase();
+
+    // ------------------------------------------
+    // Basic GSTIN format validation
+    // ------------------------------------------
+
+    if (!/^[0-9A-Z]{15}$/.test(normalizedGSTIN)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid GST number format",
+      });
+    }
+
+    // ------------------------------------------
+    // Check if GST already exists
+    // ------------------------------------------
+
+    const existingSeller = await Seller.findOne({
+      gstNumber: normalizedGSTIN,
+    });
 
     if (existingSeller) {
       return res.status(409).json({
         success: false,
-        message: "Seller already exists for this user",
+        message: "This GST number is already registered",
       });
     }
 
-    // Check GST
+    // ------------------------------------------
+    // Call GST API
+    // ------------------------------------------
+
+    const gst: GSTData = await verifyGST(normalizedGSTIN);
+
+    // ------------------------------------------
+    // Determine GST status
+    // ------------------------------------------
+
+    const gstStatus =
+      gst.status?.toUpperCase() === "ACTIVE" ? "ACTIVE" : "REJECTED";
+
+    // ------------------------------------------
+    // Return GST information
+    // ------------------------------------------
+
+    return res.status(200).json({
+      success: true,
+
+      data: {
+        gstNumber: gst.gstin,
+
+        gstStatus,
+
+        sellerName: gst.legal_name,
+
+        businessName: gst.legal_name,
+
+        businessType: gst.constitution,
+
+        panNumber: gst.pan,
+
+        storeName: gst.trade_name,
+
+        address: gst.address,
+
+        city: gst.district,
+
+        state: gst.state,
+
+        pincode: gst.pincode,
+
+        country: "India",
+
+        registrationDate: gst.registration_date,
+
+        taxpayerType: gst.taxpayer_type,
+
+        natureOfBusiness: gst.nature_of_business,
+      },
+    });
+  } catch (error: any) {
+    console.error("GST verification error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: error?.message || "Unable to verify GST number",
+    });
+  }
+};
+
+// ==========================================
+// CREATE SELLER
+// ==========================================
+
+export const createSeller = async (req: Request, res: Response) => {
+  try {
+    const { sellerName, email, phone, gstNumber, storeName, commissionRate } =
+      req.body;
+
+    // ------------------------------------------
+    // Basic validation
+    // ------------------------------------------
+
+    if (!sellerName) {
+      return res.status(400).json({
+        success: false,
+        message: "Seller name is required",
+      });
+    }
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: "Email is required",
+      });
+    }
+
+    // ------------------------------------------
+    // Get authenticated user
+    // ------------------------------------------
+
+    const userId = (req as any).user?.id;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required",
+      });
+    }
+
+    // ------------------------------------------
+    // Check existing seller for this user
+    // ------------------------------------------
+
+    const existingUserSeller = await Seller.findOne({
+      userId,
+    });
+
+    if (existingUserSeller) {
+      return res.status(409).json({
+        success: false,
+        message: "Seller profile already exists",
+      });
+    }
+
+    // ------------------------------------------
+    // GST DATA
+    // ------------------------------------------
+
+    let gstData: GSTData | null = null;
+
+    // ------------------------------------------
+    // Verify GST if provided
+    // ------------------------------------------
+
     if (gstNumber) {
-      const existingGST = await Seller.findOne({
-        gstNumber: gstNumber.toUpperCase(),
+      const normalizedGSTIN = String(gstNumber).trim().toUpperCase();
+
+      // ----------------------------------------
+      // Validate GST format
+      // ----------------------------------------
+
+      if (!/^[0-9A-Z]{15}$/.test(normalizedGSTIN)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid GST number format",
+        });
+      }
+
+      // ----------------------------------------
+      // Check duplicate GST
+      // ----------------------------------------
+
+      const existingGSTSeller = await Seller.findOne({
+        gstNumber: normalizedGSTIN,
       });
 
-      if (existingGST) {
+      if (existingGSTSeller) {
         return res.status(409).json({
           success: false,
-          message: "GST number already exists",
+          message: "This GST number is already registered",
+        });
+      }
+
+      // ----------------------------------------
+      // Verify GST with external API
+      // ----------------------------------------
+
+      gstData = await verifyGST(normalizedGSTIN);
+
+      // ----------------------------------------
+      // Check GST status
+      // ----------------------------------------
+
+      const actualGSTStatus = gstData?.status?.trim().toUpperCase();
+
+      console.log("========== GST STATUS CHECK ==========");
+      console.log("GSTIN:", gstData?.gstin);
+      console.log("Raw GST status:", gstData?.status);
+      console.log("Normalized GST status:", actualGSTStatus);
+
+      if (actualGSTStatus !== "ACTIVE") {
+        return res.status(400).json({
+          success: false,
+          message: "Only active GST registrations can be added.",
+          data: {
+            gstNumber: gstData.gstin,
+            gstStatus: gstData.status,
+          },
         });
       }
     }
 
-    // Check store slug
-    if (storeSlug) {
-      const existingStore = await Seller.findOne({
-        storeSlug: storeSlug.toLowerCase(),
-      });
-
-      if (existingStore) {
-        return res.status(409).json({
-          success: false,
-          message: "Store slug already exists",
-        });
-      }
-    }
+    // ------------------------------------------
+    // Create seller
+    // ------------------------------------------
 
     const seller = await Seller.create({
       userId,
-      sellerName,
-      businessName,
-      businessType,
 
-      gstNumber: gstNumber?.toUpperCase(),
+      // ----------------------------------------
+      // Seller Information
+      // ----------------------------------------
 
-      panNumber: panNumber?.toUpperCase(),
+      sellerName: sellerName || gstData?.legal_name || "",
 
-      email: email.toLowerCase(),
-      phone,
+      businessName: gstData?.legal_name || "",
 
-      address,
-      city,
-      state,
-      pincode,
-      country: country || "India",
+      businessType: gstData?.constitution || "",
 
-      storeName,
+      // ----------------------------------------
+      // GST
+      // ----------------------------------------
 
-      storeSlug: storeSlug?.toLowerCase(),
+      gstNumber: gstData?.gstin || undefined,
+
+      gstStatus:
+        gstData?.status?.trim().toUpperCase() === "ACTIVE"
+          ? "ACTIVE"
+          : "REJECTED",
+      gstVerifiedAt: gstData ? new Date() : undefined,
+
+      // ----------------------------------------
+      // PAN
+      // ----------------------------------------
+
+      panNumber: gstData?.pan || undefined,
+
+      // ----------------------------------------
+      // Contact
+      // ----------------------------------------
+
+      email: String(email).trim().toLowerCase(),
+
+      phone: phone || "",
+
+      // ----------------------------------------
+      // Address
+      // ----------------------------------------
+
+      address: gstData?.address || "",
+
+      city: gstData?.district || "",
+
+      state: gstData?.state || "",
+
+      pincode: gstData?.pincode || "",
+
+      country: "India",
+
+      // ----------------------------------------
+      // Store
+      // ----------------------------------------
+
+      storeName: storeName || gstData?.trade_name || gstData?.legal_name || "",
+
+      // ----------------------------------------
+      // Seller platform status
+      // ----------------------------------------
 
       status: "PENDING",
 
-      gstVerified: false,
+      // ----------------------------------------
+      // Commission
+      // ----------------------------------------
+
+      commissionRate: commissionRate !== undefined ? Number(commissionRate) : 0,
     });
+
+    // ------------------------------------------
+    // Success
+    // ------------------------------------------
 
     return res.status(201).json({
       success: true,
       message: "Seller created successfully",
-      seller,
+      data: seller,
     });
   } catch (error: any) {
     console.error("Create seller error:", error);
 
+    // ------------------------------------------
+    // Duplicate MongoDB key
+    // ------------------------------------------
+
+    if (error?.code === 11000) {
+      return res.status(409).json({
+        success: false,
+        message: "Seller information already exists",
+      });
+    }
+
+    // ------------------------------------------
+    // Error
+    // ------------------------------------------
+
     return res.status(500).json({
       success: false,
-      message: "Failed to create seller",
-      error: error.message,
+      message: error?.message || "Unable to create seller",
     });
   }
 };
+
+// ==========================================
+// GET ALL SELLERS
+// ==========================================
 
 export const getSellers = async (req: Request, res: Response) => {
   try {
@@ -125,10 +385,14 @@ export const getSellers = async (req: Request, res: Response) => {
     return res.status(500).json({
       success: false,
       message: "Failed to fetch sellers",
-      error: error.message,
+      error: error?.message,
     });
   }
 };
+
+// ==========================================
+// GET SELLER BY ID
+// ==========================================
 
 export const getSellerById = async (req: Request, res: Response) => {
   try {
@@ -153,10 +417,14 @@ export const getSellerById = async (req: Request, res: Response) => {
     return res.status(500).json({
       success: false,
       message: "Failed to fetch seller",
-      error: error.message,
+      error: error?.message,
     });
   }
 };
+
+// ==========================================
+// UPDATE SELLER
+// ==========================================
 
 export const updateSeller = async (req: Request, res: Response) => {
   try {
@@ -187,25 +455,65 @@ export const updateSeller = async (req: Request, res: Response) => {
       storeSlug,
     } = req.body;
 
+    // ------------------------------------------
+    // Seller information
+    // ------------------------------------------
+
     seller.sellerName = sellerName ?? seller.sellerName;
+
     seller.businessName = businessName ?? seller.businessName;
+
     seller.businessType = businessType ?? seller.businessType;
 
-    seller.panNumber = panNumber?.toUpperCase() ?? seller.panNumber;
+    // ------------------------------------------
+    // PAN
+    // ------------------------------------------
 
-    seller.email = email?.toLowerCase() ?? seller.email;
+    if (panNumber !== undefined) {
+      seller.panNumber = panNumber
+        ? String(panNumber).trim().toUpperCase()
+        : "";
+    }
+
+    // ------------------------------------------
+    // Contact
+    // ------------------------------------------
+
+    if (email !== undefined) {
+      seller.email = String(email).trim().toLowerCase();
+    }
 
     seller.phone = phone ?? seller.phone;
 
+    // ------------------------------------------
+    // Address
+    // ------------------------------------------
+
     seller.address = address ?? seller.address;
+
     seller.city = city ?? seller.city;
+
     seller.state = state ?? seller.state;
+
     seller.pincode = pincode ?? seller.pincode;
+
     seller.country = country ?? seller.country;
+
+    // ------------------------------------------
+    // Store
+    // ------------------------------------------
 
     seller.storeName = storeName ?? seller.storeName;
 
-    seller.storeSlug = storeSlug?.toLowerCase() ?? seller.storeSlug;
+    if (storeSlug !== undefined) {
+      seller.storeSlug = storeSlug
+        ? String(storeSlug).trim().toLowerCase()
+        : "";
+    }
+
+    // ------------------------------------------
+    // Save
+    // ------------------------------------------
 
     const updatedSeller = await seller.save();
 
@@ -217,13 +525,24 @@ export const updateSeller = async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error("Update seller error:", error);
 
+    if (error?.code === 11000) {
+      return res.status(409).json({
+        success: false,
+        message: "Seller information already exists",
+      });
+    }
+
     return res.status(500).json({
       success: false,
       message: "Failed to update seller",
-      error: error.message,
+      error: error?.message,
     });
   }
 };
+
+// ==========================================
+// DELETE SELLER
+// ==========================================
 
 export const deleteSeller = async (req: Request, res: Response) => {
   try {
@@ -250,10 +569,14 @@ export const deleteSeller = async (req: Request, res: Response) => {
     return res.status(500).json({
       success: false,
       message: "Failed to delete seller",
-      error: error.message,
+      error: error?.message,
     });
   }
 };
+
+// ==========================================
+// UPDATE SELLER STATUS
+// ==========================================
 
 export const updateSellerStatus = async (req: Request, res: Response) => {
   try {
@@ -296,140 +619,7 @@ export const updateSellerStatus = async (req: Request, res: Response) => {
     return res.status(500).json({
       success: false,
       message: "Failed to update seller status",
-      error: error.message,
-    });
-  }
-};
-
-export const verifySellerGST = async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
-
-    const seller = await Seller.findById(id);
-
-    if (!seller) {
-      return res.status(404).json({
-        success: false,
-        message: "Seller not found",
-      });
-    }
-
-    if (!seller.gstNumber) {
-      return res.status(400).json({
-        success: false,
-        message: "Seller does not have a GSTIN",
-      });
-    }
-
-    const gstin = seller.gstNumber.toUpperCase();
-
-    const gstinRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/;
-
-    if (!gstinRegex.test(gstin)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid GSTIN format",
-      });
-    }
-
-    const apiKey = process.env.GST_VERIFICATION_API;
-
-    const baseUrl =
-      process.env.GST_VERIFY_BASE_URL || "https://gstverify.co.in/api/v1";
-
-    if (!apiKey) {
-      return res.status(500).json({
-        success: false,
-        message: "GST verification API key is not configured",
-      });
-    }
-
-    const response = await fetch(`${baseUrl}/verify/${gstin}`, {
-      method: "GET",
-      headers: {
-        "X-API-Key": apiKey,
-        Accept: "application/json",
-      },
-    });
-
-    const result = await response.json();
-
-    if (!response.ok || !result.success) {
-      return res.status(response.status || 400).json({
-        success: false,
-        message: result?.message || "GST verification failed",
-        data: result?.data || null,
-      });
-    }
-
-    const gstData = result.data;
-
-    if (!gstData?.gstin) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid response from GST verification service",
-      });
-    }
-
-    // Update seller GST information
-    seller.gstNumber = gstData.gstin.toUpperCase();
-
-    seller.gstVerified = gstData.status?.toLowerCase() === "active";
-
-    seller.gstVerifiedAt = seller.gstVerified ? new Date() : undefined;
-
-    // Fill business information from GST if empty
-    if (!seller.businessName && gstData.legal_name) {
-      seller.businessName = gstData.legal_name;
-    }
-
-    if (!seller.storeName && gstData.trade_name) {
-      seller.storeName = gstData.trade_name;
-    }
-
-    await seller.save();
-
-    return res.status(200).json({
-      success: true,
-      message: seller.gstVerified
-        ? "GSTIN verified successfully"
-        : "GSTIN is not active",
-
-      cached: result.cached ?? false,
-      credits_remaining: result.credits_remaining ?? null,
-
-      data: {
-        gstin: gstData.gstin,
-        legal_name: gstData.legal_name,
-        trade_name: gstData.trade_name,
-        status: gstData.status,
-        constitution: gstData.constitution,
-        taxpayer_type: gstData.taxpayer_type,
-        registration_date: gstData.registration_date,
-        state: gstData.state,
-        pan: gstData.pan,
-        address: gstData.address,
-        nature_of_business: gstData.nature_of_business,
-      },
-
-      seller: {
-        id: seller._id,
-        sellerName: seller.sellerName,
-        businessName: seller.businessName,
-        storeName: seller.storeName,
-        gstNumber: seller.gstNumber,
-        gstVerified: seller.gstVerified,
-        gstVerifiedAt: seller.gstVerifiedAt,
-        status: seller.status,
-      },
-    });
-  } catch (error: any) {
-    console.error("GST verification error:", error);
-
-    return res.status(500).json({
-      success: false,
-      message: "GST verification service failed",
-      error: error.message,
+      error: error?.message,
     });
   }
 };
