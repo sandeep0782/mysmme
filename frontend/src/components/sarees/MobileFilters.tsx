@@ -14,6 +14,7 @@ import SareeFilters from "./SareeFilters";
 import { SlidersHorizontal } from "lucide-react";
 
 import type { SareeProduct } from "@/types/product";
+import { useState } from "react";
 
 interface MobileFiltersProps {
   products: SareeProduct[];
@@ -21,6 +22,7 @@ interface MobileFiltersProps {
   selectedBrands: string[];
   selectedColor: string[];
   selectedCategory: string[];
+  selectedDiscount: string[];
 
   onFilterChange: (section: string, item: string) => void;
 }
@@ -30,10 +32,17 @@ const MobileFilters = ({
   selectedBrands,
   selectedColor,
   selectedCategory,
+  selectedDiscount,
   onFilterChange,
 }: MobileFiltersProps) => {
+  const [open, setOpen] = useState<boolean>(false);
+
+  const handleMobileFilterChange = (section: string, item: string) => {
+    onFilterChange(section, item);
+    setOpen(false);
+  };
   return (
-    <Sheet>
+    <Sheet open={open} onOpenChange={setOpen}>
       {/* =====================================================
           FILTER BUTTON
       ===================================================== */}
@@ -78,7 +87,8 @@ const MobileFilters = ({
             selectedBrands={selectedBrands}
             selectedColor={selectedColor}
             selectedCategory={selectedCategory}
-            onFilterChange={onFilterChange}
+            selectedDiscount={selectedDiscount}
+            onFilterChange={handleMobileFilterChange}
           />
         </div>
       </SheetContent>

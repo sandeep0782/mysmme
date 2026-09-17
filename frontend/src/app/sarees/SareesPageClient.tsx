@@ -37,6 +37,7 @@ const Page = () => {
   const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
   const [selectedColor, setSelectedColor] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string[]>([]);
+  const [selectedDiscount, setSelectedDiscount] = useState<string[]>([]);
 
   // =========================================================
   // SORT STATE
@@ -66,6 +67,9 @@ const Page = () => {
 
       case "category":
         setSelectedCategory(updateFilter);
+        break;
+      case "discount":
+        setSelectedDiscount(updateFilter);
         break;
 
       default:
@@ -160,6 +164,7 @@ const Page = () => {
                 selectedBrands={selectedBrands}
                 selectedColor={selectedColor}
                 selectedCategory={selectedCategory}
+                selectedDiscount={selectedDiscount}
                 onFilterChange={toggleFilter}
               />
             </div>
@@ -215,6 +220,7 @@ const Page = () => {
               selectedBrands={selectedBrands}
               selectedColor={selectedColor}
               selectedCategory={selectedCategory}
+              selectedDiscount={selectedDiscount}
               onFilterChange={toggleFilter}
             />
           </aside>
@@ -230,6 +236,7 @@ const Page = () => {
               selectedBrands={selectedBrands}
               selectedColor={selectedColor}
               selectedCategory={selectedCategory}
+              selectedDiscount={selectedDiscount}
               sortOption={sortOption}
             />
           </main>

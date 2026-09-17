@@ -11,6 +11,7 @@ interface SareeFiltersProps {
   selectedBrands: string[];
   selectedColor: string[];
   selectedCategory: string[];
+  selectedDiscount: string[];
 
   onFilterChange: (section: string, item: string) => void;
 }
@@ -20,13 +21,14 @@ interface FilterOption {
   count: number;
 }
 
-type FilterSectionKey = "brand" | "color" | "category";
+type FilterSectionKey = "brand" | "color" | "category" | "discount";
 
 const SareeFilters = ({
   products = [],
   selectedBrands,
   selectedColor,
   selectedCategory,
+  selectedDiscount,
   onFilterChange,
 }: SareeFiltersProps) => {
   const [activeSearch, setActiveSearch] = useState<FilterSectionKey | null>(
@@ -39,9 +41,33 @@ const SareeFilters = ({
     brand: "",
     color: "",
     category: "",
+    discount: "",
   });
 
   const [showAllColors, setShowAllColors] = useState(false);
+
+  const discountOptions: FilterOption[] = useMemo(() => {
+    const levels = [10, 20, 30, 40, 50, 60, 70];
+
+    return levels.map((level) => {
+      const count = products.filter((product) => {
+        const price = Number(product?.price ?? 0);
+        const finalPrice = Number(product?.finalPrice ?? 0);
+
+        const discount =
+          price > finalPrice && price > 0
+            ? Math.round(((price - finalPrice) / price) * 100)
+            : 0;
+
+        return discount >= level;
+      }).length;
+
+      return {
+        value: String(level),
+        count,
+      };
+    });
+  }, [products]);
 
   // =========================
   // DISPLAY VALUE
@@ -237,6 +263,9 @@ const SareeFilters = ({
         return selectedCategory.some(
           (item) => normalize(item) === normalizedValue,
         );
+
+      case "discount":
+        return selectedDiscount.includes(value);
 
       default:
         return false;
@@ -457,7 +486,11 @@ const SareeFilters = ({
                     hover:text-black
                   "
                 >
-                  <span className="truncate">{option.value}</span>
+                  <span className="truncate">
+                    {section === "discount"
+                      ? `${option.value}% and above`
+                      : option.value}
+                  </span>
 
                   <span className="shrink-0 text-gray-400">
                     ({option.count})
@@ -545,6 +578,12 @@ const SareeFilters = ({
         title="CATEGORY"
         section="category"
         values={filters.category}
+      />
+
+      <FilterSection
+        title="DISCOUNT"
+        section="discount"
+        values={discountOptions}
       />
     </div>
   );

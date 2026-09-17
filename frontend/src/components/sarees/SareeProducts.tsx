@@ -13,6 +13,7 @@ interface SareeProductsProps {
   selectedBrands: string[];
   selectedColor: string[];
   selectedCategory: string[];
+  selectedDiscount: string[];
   sortOption: string;
 }
 
@@ -23,6 +24,7 @@ const SareeProducts = ({
   selectedBrands,
   selectedColor,
   selectedCategory,
+  selectedDiscount,
   sortOption,
 }: SareeProductsProps) => {
   const [currentPage, setCurrentPage] = useState(1);
@@ -84,7 +86,13 @@ const SareeProducts = ({
   // =========================
   useEffect(() => {
     setCurrentPage(1);
-  }, [selectedBrands, selectedColor, selectedCategory, sortOption]);
+  }, [
+    selectedBrands,
+    selectedColor,
+    selectedCategory,
+    selectedDiscount,
+    sortOption,
+  ]);
 
   // =========================
   // FILTER + SORT
@@ -108,6 +116,14 @@ const SareeProducts = ({
       const productColor = normalize(saree.color);
 
       const productCategory = normalize(saree.category);
+
+      const price = Number(saree.price ?? 0);
+      const finalPrice = Number(saree.finalPrice ?? 0);
+
+      const productDiscount =
+        price > finalPrice && price > 0
+          ? Math.round(((price - finalPrice) / price) * 100)
+          : 0;
 
       // =========================
       // BRAND MATCH
@@ -133,6 +149,12 @@ const SareeProducts = ({
         normalizedCategories.length === 0 ||
         normalizedCategories.includes(productCategory);
 
+      const discountMatch =
+        selectedDiscount.length === 0 ||
+        selectedDiscount.some(
+          (discount) => productDiscount >= Number(discount),
+        );
+
       const searchMatch = searchTerm
         ? (saree.title?.toLowerCase() ?? "").includes(
             searchTerm.toLowerCase(),
@@ -142,7 +164,13 @@ const SareeProducts = ({
             : false)
         : true;
 
-      return brandMatch && colorMatch && categoryMatch && searchMatch;
+      return (
+        brandMatch &&
+        colorMatch &&
+        categoryMatch &&
+        discountMatch &&
+        searchMatch
+      );
     });
 
     // =========================
@@ -182,6 +210,7 @@ const SareeProducts = ({
     normalizedBrands,
     normalizedColors,
     normalizedCategories,
+    selectedDiscount,
     sortOption,
   ]);
 
@@ -239,7 +268,7 @@ const SareeProducts = ({
           <div
             className="
     grid
-    grid-cols-2
+    grid-cols-1
     gap-4
     sm:grid-cols-2
     lg:grid-cols-4
