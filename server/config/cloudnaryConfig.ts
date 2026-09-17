@@ -254,32 +254,64 @@ export const uploadImageUrlToCloudinary = async (
   }
 
   // ----------------------------------------------------------
-  // EXACT IMAGE SIZE VALIDATION
+  // IMAGE SIZE VALIDATION WITH 5% TOLERANCE
   // ----------------------------------------------------------
 
   const REQUIRED_WIDTH = 1080;
   const REQUIRED_HEIGHT = 1440;
+  const SIZE_TOLERANCE = 0.05; // 5%
+
+  const minWidth = REQUIRED_WIDTH * (1 - SIZE_TOLERANCE);
+  const maxWidth = REQUIRED_WIDTH * (1 + SIZE_TOLERANCE);
+
+  const minHeight = REQUIRED_HEIGHT * (1 - SIZE_TOLERANCE);
+  const maxHeight = REQUIRED_HEIGHT * (1 + SIZE_TOLERANCE);
 
   console.log("IMAGE SIZE CHECK", {
     required: `${REQUIRED_WIDTH}x${REQUIRED_HEIGHT}`,
+    tolerance: "±5%",
+    acceptedWidth: `${Math.ceil(minWidth)}-${Math.floor(maxWidth)}`,
+    acceptedHeight: `${Math.ceil(minHeight)}-${Math.floor(maxHeight)}`,
     received: `${width}x${height}`,
     imageUrl,
   });
 
-  if (width !== REQUIRED_WIDTH || height !== REQUIRED_HEIGHT) {
+  if (
+    width < minWidth ||
+    width > maxWidth ||
+    height < minHeight ||
+    height > maxHeight
+  ) {
     throw new Error(
-      `Image size is not matching. Required size is ${REQUIRED_WIDTH}x${REQUIRED_HEIGHT}px, received ${width}x${height}px.`,
+      `Image size is not matching. Required size is approximately ${REQUIRED_WIDTH}x${REQUIRED_HEIGHT}px (±5%), received ${width}x${height}px.`,
     );
   }
 
-  // ==========================================================
-  // IMPORTANT:
-  // DO NOT RESIZE, CROP, ROTATE OR RE-ENCODE THE IMAGE.
-  //
-  // Upload the original bytes exactly as downloaded.
-  // ==========================================================
+  // ----------------------------------------------------------
+  // NORMALIZE ACCEPTED IMAGE TO EXACTLY 1080x1440
+  // ----------------------------------------------------------
 
-  const uploadBuffer = buffer;
+  let uploadBuffer: Buffer;
+
+  if (width === REQUIRED_WIDTH && height === REQUIRED_HEIGHT) {
+    // Already exact size — preserve original bytes.
+    uploadBuffer = buffer;
+  } else {
+    uploadBuffer = await sharp(buffer)
+      .resize(REQUIRED_WIDTH, REQUIRED_HEIGHT, {
+        fit: "fill",
+      })
+      .jpeg({
+        quality: 95,
+        chromaSubsampling: "4:4:4",
+      })
+      .toBuffer();
+
+    console.log("IMAGE NORMALIZED", {
+      from: `${width}x${height}`,
+      to: `${REQUIRED_WIDTH}x${REQUIRED_HEIGHT}`,
+    });
+  }
 
   // ----------------------------------------------------------
   // NUDITY / NSFW CHECK

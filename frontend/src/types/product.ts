@@ -5,10 +5,15 @@ export interface OrderTracking {
   trackingUrl?: string;
 }
 
+export interface SellerReference {
+  _id: string;
+  name: string;
+}
 export interface ProductReference {
   _id: string;
   name: string;
   slug?: string;
+  seller?: SellerReference;
 }
 
 export interface ProductColor {
@@ -138,7 +143,7 @@ export interface SareeProduct {
 
   publishStatus?: string;
 
-  seller?: string;
+  seller?: SellerReference;
   shippingCharge: string;
 }
 

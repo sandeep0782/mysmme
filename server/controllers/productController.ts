@@ -425,7 +425,8 @@ export const getProductBySlug = async (req: Request, res: Response) => {
       .populate("category", "name slug")
       .populate("brand", "name slug")
       .populate("season", "name slug")
-      .populate("color", "name slug");
+      .populate("color", "name slug")
+      .populate("seller", "name");
 
     if (!product) {
       return response(res, 404, "Product not found");
@@ -491,4 +492,3 @@ export const getProductsBySeller = async (req: Request, res: Response) => {
     return response(res, 500, "Error fetching products");
   }
 };
-

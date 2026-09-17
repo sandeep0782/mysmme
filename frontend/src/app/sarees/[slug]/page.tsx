@@ -704,20 +704,22 @@ const SareeDetailsPage = () => {
               <div className="mt-4">
                 <div className="space-y-1 text-sm">
                   {/* Product Code */}
-                  <div className="flex items-center justify-between gap-4">
-                    <span className="text-gray-500">Product Code</span>
+                  <div className="flex items-center gap-4">
+                    <span className="text-gray-500">Product Code:</span>
 
                     <span className="font-semibold text-gray-900">
-                      44376764
+                      {String(saree.styleId ?? "")}
                     </span>
                   </div>
 
                   {/* Seller */}
-                  <div className="flex items-center justify-between gap-4">
-                    <span className="text-gray-500">Seller</span>
+                  <div className="flex items-center gap-4">
+                    <span className="text-gray-500">Seller:</span>
 
                     <span className="font-semibold uppercase text-gray-900">
-                      {saree.seller || saree.brand?.name || "-"}
+                      {typeof saree.seller === "object"
+                        ? saree.seller?.name || "-"
+                        : "-"}
                     </span>
                   </div>
 
