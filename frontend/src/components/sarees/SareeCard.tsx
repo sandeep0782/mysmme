@@ -436,27 +436,23 @@ const SareeCard = ({ saree }: SareeCardProps) => {
 
               {/* PRICE */}
 
+              {/* PRICE */}
+
               <div className="flex items-baseline gap-2">
-                <span
-                  className="
-                    text-md
-                    font-semibold
-                    text-black
-                  "
-                >
+                <span className="text-md font-semibold text-black">
                   ₹{finalPrice}
                 </span>
 
-                {price > 0 && (
-                  <span
-                    className="
-                      text-sm
-                      text-zinc-500
-                      line-through
-                    "
-                  >
-                    ₹{price}
-                  </span>
+                {price > finalPrice && price > 0 && (
+                  <>
+                    <span className="text-sm text-zinc-500 line-through">
+                      ₹{price}
+                    </span>
+
+                    <span className="text-sm font-semibold text-green-600">
+                      {discount}% Off
+                    </span>
+                  </>
                 )}
               </div>
             </div>

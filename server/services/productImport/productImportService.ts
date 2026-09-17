@@ -9,6 +9,8 @@ import Category from "../../models/Category";
 import Color from "../../models/Color";
 import Season from "../../models/Season";
 import { generateStyleId } from "./styleIdService";
+import { uploadImageUrlToCloudinary } from "../../config/cloudnaryConfig";
+import ImageFingerprint from "../../models/ImageFingerprint";
 
 export interface ProductImportResult {
   totalRows: number;
@@ -89,6 +91,41 @@ function parseImages(row: ExcelRow): string[] {
   return ["image1", "image2", "image3", "image4", "image5"]
     .map((field) => text(row[field]))
     .filter(Boolean);
+}
+
+type UploadedImage = {
+  url: string;
+  hash: string;
+  publicId: string;
+};
+
+async function uploadProductImages(
+  imageUrls: string[],
+): Promise<UploadedImage[]> {
+  const uploadedImages: UploadedImage[] = [];
+
+  for (const imageUrl of imageUrls) {
+    try {
+      console.log(`[ProductImport] Processing image: ${imageUrl}`);
+
+      const uploaded = await uploadImageUrlToCloudinary(
+        imageUrl,
+        "products/import",
+      );
+
+      uploadedImages.push(uploaded);
+
+      console.log(`[ProductImport] Cloudinary image: ${uploaded.url}`);
+    } catch (error) {
+      throw new Error(
+        `Failed to process image "${imageUrl}": ${
+          error instanceof Error ? error.message : "Unknown image error"
+        }`,
+      );
+    }
+  }
+
+  return uploadedImages;
 }
 
 // ============================================================
@@ -202,9 +239,7 @@ export async function processProductImport(
   const worksheet = workbook.Sheets[SHEET_NAME];
 
   if (!worksheet) {
-    throw new Error(
-      `Required worksheet "${SHEET_NAME}" was not found`,
-    );
+    throw new Error(`Required worksheet "${SHEET_NAME}" was not found`);
   }
 
   const rawRows = XLSX.utils.sheet_to_json<ExcelRow>(worksheet, {
@@ -331,9 +366,9 @@ export async function processProductImport(
       // IMAGES
       // ----------------------------------------------------------
 
-      const images = parseImages(row);
+      const sourceImages = parseImages(row);
 
-      if (images.length === 0) {
+      if (sourceImages.length === 0) {
         throw new Error("At least image1 is required");
       }
 
@@ -358,6 +393,34 @@ export async function processProductImport(
 
       const isExistingProduct = Boolean(product);
 
+      // ----------------------------------------------------------
+      // UPLOAD IMAGES TO CLOUDINARY
+      // ----------------------------------------------------------
+
+      const uploadedImages = await uploadProductImages(sourceImages);
+
+      const images = uploadedImages.map((image) => image.url);
+      const imageHashes = uploadedImages.map((image) => image.hash);
+
+      // ----------------------------------------------------------
+      // CHECK IMAGE OWNERSHIP
+      // ----------------------------------------------------------
+
+      for (const imageHash of imageHashes) {
+        const existingFingerprint = await ImageFingerprint.findOne({
+          hash: imageHash,
+        });
+
+        if (
+          existingFingerprint &&
+          (!product ||
+            existingFingerprint.product.toString() !== product._id.toString())
+        ) {
+          throw new Error(
+            "Duplicate image detected. This image is already used by another product.",
+          );
+        }
+      }
       // ----------------------------------------------------------
       // STYLE ID
       // ----------------------------------------------------------
@@ -474,6 +537,39 @@ export async function processProductImport(
       // New products will generate their slug in Product pre-validation.
       await product.save();
 
+      // ----------------------------------------------------------
+      // SYNC IMAGE FINGERPRINTS
+      // ----------------------------------------------------------
+
+      await ImageFingerprint.deleteMany({
+        product: product._id,
+        hash: { $nin: imageHashes },
+      });
+
+      for (
+        let imageIndex = 0;
+        imageIndex < uploadedImages.length;
+        imageIndex++
+      ) {
+        const uploadedImage = uploadedImages[imageIndex];
+
+        await ImageFingerprint.findOneAndUpdate(
+          {
+            hash: uploadedImage.hash,
+          },
+          {
+            $set: {
+              product: product._id,
+              imageUrl: uploadedImage.url,
+            },
+          },
+          {
+            upsert: true,
+            new: true,
+          },
+        );
+      }
+
       console.log(
         `[ProductImport] Row ${excelRowNumber} ${
           isExistingProduct ? "updated" : "created"
@@ -487,9 +583,7 @@ export async function processProductImport(
       const message =
         error instanceof Error ? error.message : "Unknown row import error";
 
-      console.error(
-        `[ProductImport] Row ${excelRowNumber} failed: ${message}`,
-      );
+      console.error(`[ProductImport] Row ${excelRowNumber} failed: ${message}`);
 
       await ProductImport.findByIdAndUpdate(productImport._id, {
         $push: {
@@ -518,8 +612,7 @@ export async function processProductImport(
   // FINALIZE
   // ============================================================
 
-  const finalStatus =
-    failedRows === 0 ? "completed" : "completed_with_errors";
+  const finalStatus = failedRows === 0 ? "completed" : "completed_with_errors";
 
   await ProductImport.findByIdAndUpdate(productImport._id, {
     $set: {
