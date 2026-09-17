@@ -193,7 +193,7 @@ const SareeCard = ({ saree }: SareeCardProps) => {
             <div
               className="
                 relative
-                aspect-[4/5]
+                aspect-[3/4]
                 overflow-hidden
                 bg-gray-50
               "
@@ -206,26 +206,26 @@ const SareeCard = ({ saree }: SareeCardProps) => {
                     key={`${image}-${index}`}
                     src={image}
                     alt={`${title || "Saree"} - image ${index + 1}`}
-                    fill
+                    width={1080}
+                    height={1440}
                     sizes="
-                        (max-width: 640px) 50vw,
-                        (max-width: 1024px) 33vw,
-                        25vw
-                      "
+    (max-width: 640px) 50vw,
+    (max-width: 1024px) 33vw,
+    25vw
+  "
                     priority={index === 0}
                     className={`
-                        absolute
-                        inset-0
-                        object-cover
-                        transition-opacity
-                        duration-700
-                        ease-in-out
-                        ${
-                          index === activeImage
-                            ? "z-10 opacity-100"
-                            : "z-0 opacity-0"
-                        }
-                      `}
+    absolute
+    inset-0
+    h-full
+    w-full
+    object-contain
+    object-top
+    transition-opacity
+    duration-700
+    ease-in-out
+    ${index === activeImage ? "z-10 opacity-100" : "z-0 opacity-0"}
+  `}
                   />
                 ))
               ) : (
@@ -345,10 +345,10 @@ const SareeCard = ({ saree }: SareeCardProps) => {
                 PRODUCT INFO
             ========================= */}
 
-            <div className="space-y-2 p-4">
+            <div className="space-y-0.5 p-4">
               {/* BRAND + COLOR */}
 
-              <div className="relative min-h-[28px]">
+              <div className="relative min-h-[22px]">
                 <div
                   className="
                     flex
@@ -363,7 +363,7 @@ const SareeCard = ({ saree }: SareeCardProps) => {
                   <h3
                     className="
                       truncate
-                      text-lg
+                      text-md
                       font-semibold
                       text-red-500
                     "
@@ -374,7 +374,7 @@ const SareeCard = ({ saree }: SareeCardProps) => {
                   <h3
                     className="
                       truncate
-                      text-lg
+                      text-md
                       font-semibold
                       text-gray-700
                     "
@@ -388,24 +388,29 @@ const SareeCard = ({ saree }: SareeCardProps) => {
                 <Button
                   type="button"
                   className="
-                    absolute
-                    inset-0
-                    w-full
-                    cursor-pointer
-                    rounded-xs
-                    border
-                    border-red-500
-                    bg-white
-                    text-sm
-                    font-semibold
-                    text-red-500
-                    opacity-0
-                    transition-all
-                    duration-200
-                    group-hover:opacity-100
-                    hover:bg-red-500
-                    hover:text-white
-                  "
+  absolute
+  left-0
+  top-0
+  h-[22px]
+  w-full
+  px-3
+  py-0
+  cursor-pointer
+  rounded-xs
+  border
+  border-red-500
+  bg-white
+  text-xs
+  font-semibold
+  leading-none
+  text-red-500
+  opacity-0
+  transition-all
+  duration-200
+  group-hover:opacity-100
+  hover:bg-red-500
+  hover:text-white
+"
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
@@ -422,7 +427,7 @@ const SareeCard = ({ saree }: SareeCardProps) => {
               <h3
                 className="
                   line-clamp-1
-                  font-semibold
+                  font-normal
                   text-zinc-400
                 "
               >
@@ -434,8 +439,8 @@ const SareeCard = ({ saree }: SareeCardProps) => {
               <div className="flex items-baseline gap-2">
                 <span
                   className="
-                    text-2xl
-                    font-bold
+                    text-md
+                    font-semibold
                     text-black
                   "
                 >
