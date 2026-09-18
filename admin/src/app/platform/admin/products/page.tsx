@@ -161,8 +161,10 @@ const Page = () => {
         product.title?.toLowerCase().includes(value) ||
         product.productId?.toLowerCase().includes(value) ||
         product.skuId?.toLowerCase().includes(value) ||
-        product.styleId?.toLowerCase().includes(value) ||
-        product.brand?.name?.toLowerCase().includes(value) ||
+        String(product.styleId ?? "")
+          .toLowerCase()
+          .includes(value);
+      product.brand?.name?.toLowerCase().includes(value) ||
         product.category?.name?.toLowerCase().includes(value);
 
       const matchesStatus =
@@ -617,7 +619,7 @@ const Page = () => {
                                 <img
                                   src={product.images[0]}
                                   alt={product.title}
-                                  className="h-full w-full object-cover"
+                                  className="h-full w-full object-contain object-top"
                                 />
                               ) : (
                                 <Package className="h-6 w-6 text-slate-300" />

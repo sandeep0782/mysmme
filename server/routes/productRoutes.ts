@@ -11,22 +11,29 @@ router.get("/", productController.getAllProducts);
 router.get("/slug/:slug", productController.getProductBySlug);
 
 // Private Routes
+
 router.get("/:id", authenticateUser, productController.getProductById);
+router.put(
+  "/:id",
+  authenticateUser,
+  multerMiddleware,
+  productController.updateProduct,
+);
 router.post(
   "/",
   authenticateUser,
   multerMiddleware,
-  productController.createProduct
+  productController.createProduct,
 );
 router.delete(
   "/seller/:productId",
   authenticateUser,
-  productController.deleteProduct
+  productController.deleteProduct,
 );
 router.get(
   "/seller/:sellerId",
   authenticateUser,
-  productController.getProductsBySeller
+  productController.getProductsBySeller,
 );
 
 export default router;

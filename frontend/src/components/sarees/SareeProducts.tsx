@@ -4,7 +4,7 @@ import Spinner from "@/lib/Spinner";
 import Pagination from "@/components/Pagination";
 import SareeCard from "./SareeCard";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 
 interface SareeProductsProps {
   products: any[];
@@ -30,6 +30,8 @@ const SareeProducts = ({
   const [currentPage, setCurrentPage] = useState(1);
 
   const sareePerPage = 20;
+
+  const productsTopRef = useRef<HTMLDivElement>(null);
 
   const searchTerm =
     new URLSearchParams(window.location.search).get("search") || "";
@@ -231,6 +233,12 @@ const SareeProducts = ({
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
+    requestAnimationFrame(() => {
+      productsTopRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
   };
 
   // =========================
@@ -258,7 +266,7 @@ const SareeProducts = ({
   // =========================
 
   return (
-    <div className="space-y-8">
+    <div ref={productsTopRef} className="scroll-mt-24 space-y-8">
       {paginatedSarees.length > 0 ? (
         <>
           {/* =========================
