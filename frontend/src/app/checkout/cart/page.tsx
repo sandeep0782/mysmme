@@ -392,7 +392,7 @@ export default function CheckoutPage() {
         description="Looks like you haven't added any items yet. 
         Explore our collection and find something you love!"
         buttonText="Browse Sarees"
-        imageUrl="/images/cart.webp"
+        imageUrl="/images/cart.png"
         onClick={() => router.push("/sarees")}
       />
     );

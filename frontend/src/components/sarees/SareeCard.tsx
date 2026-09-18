@@ -3,19 +3,50 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Heart } from "lucide-react";
+
+import { Heart, Loader2 } from "lucide-react";
+
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+
 import { motion } from "framer-motion";
+
 import { useEffect, useRef, useState } from "react";
+
+import { useDispatch, useSelector } from "react-redux";
+
+import toast from "react-hot-toast";
+
+import { RootState } from "@/store/store";
+
+import { useAddToCartMutation } from "@/store/api/cartApi";
+
+import {
+  useAddToWishlistMutation,
+  useRemoveFromWishlistMutation,
+} from "@/store/api/wishlistApi";
+
+import { addToCart } from "@/store/slice/cartSlice";
+
+import {
+  addToWishlistAction,
+  removeFromWishlistAction,
+} from "@/store/slice/wishlistSlice";
+
+import { toggleLoginDialog } from "@/store/slice/userSlice";
+
+// ============================================================
+// TYPES
+// ============================================================
 
 interface SareeCardProps {
   saree: any;
 }
 
-// =========================
+// ============================================================
 // HELPERS
-// =========================
+// ============================================================
 
 const getDisplayValue = (value: unknown): string => {
   if (value == null) {
@@ -40,9 +71,9 @@ const getDisplayValue = (value: unknown): string => {
   return "";
 };
 
-// =========================
+// ============================================================
 // IMAGE URL VALIDATION
-// =========================
+// ============================================================
 
 const isValidImageUrl = (value: unknown): value is string => {
   if (typeof value !== "string" || !value.trim()) {
@@ -67,15 +98,50 @@ const isValidImageUrl = (value: unknown): value is string => {
   }
 };
 
+// ============================================================
+// COMPONENT
+// ============================================================
+
 const SareeCard = ({ saree }: SareeCardProps) => {
+  // ==========================================================
+  // ROUTER / REDUX
+  // ==========================================================
+
+  const router = useRouter();
+
+  const dispatch = useDispatch();
+
+  const wishlist = useSelector((state: RootState) => state.wishlist.items);
+
+  // ==========================================================
+  // API MUTATIONS
+  // ==========================================================
+
+  const [addToCartMutation] = useAddToCartMutation();
+
+  const [addToWishlistMutation] = useAddToWishlistMutation();
+
+  const [removeWishlistMutation] = useRemoveFromWishlistMutation();
+
+  // ==========================================================
+  // STATE
+  // ==========================================================
+
   const [activeImage, setActiveImage] = useState(0);
+
   const [isHovered, setIsHovered] = useState(false);
+
+  const [isBuying, setIsBuying] = useState(false);
+
+  const [isWishlistLoading, setIsWishlistLoading] = useState(false);
 
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // =========================
+  // ==========================================================
   // PRODUCT VALUES
-  // =========================
+  // ==========================================================
+
+  const productId = String(saree?._id ?? "");
 
   const brand = getDisplayValue(saree?.brand);
 
@@ -83,17 +149,17 @@ const SareeCard = ({ saree }: SareeCardProps) => {
 
   const title = getDisplayValue(saree?.title);
 
-  // =========================
+  // ==========================================================
   // IMAGES
-  // =========================
+  // ==========================================================
 
   const images: string[] = Array.isArray(saree?.images)
     ? saree.images.filter(isValidImageUrl)
     : [];
 
-  // =========================
+  // ==========================================================
   // RESET ACTIVE IMAGE
-  // =========================
+  // ==========================================================
 
   useEffect(() => {
     if (activeImage >= images.length) {
@@ -101,9 +167,9 @@ const SareeCard = ({ saree }: SareeCardProps) => {
     }
   }, [images.length, activeImage]);
 
-  // =========================
+  // ==========================================================
   // PRICE
-  // =========================
+  // ==========================================================
 
   const price = Number(saree?.price ?? 0);
 
@@ -114,9 +180,17 @@ const SareeCard = ({ saree }: SareeCardProps) => {
       ? Math.round(((price - finalPrice) / price) * 100)
       : 0;
 
-  // =========================
+  // ==========================================================
+  // WISHLIST STATE
+  // ==========================================================
+
+  const isInWishlist = wishlist.some((item) =>
+    Array.isArray(item?.products) ? item.products.includes(productId) : false,
+  );
+
+  // ==========================================================
   // AUTO IMAGE SLIDER
-  // =========================
+  // ==========================================================
 
   useEffect(() => {
     if (!isHovered || images.length <= 1) {
@@ -132,14 +206,15 @@ const SareeCard = ({ saree }: SareeCardProps) => {
     return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
+
         intervalRef.current = null;
       }
     };
   }, [isHovered, images.length]);
 
-  // =========================
-  // MOUSE HANDLERS
-  // =========================
+  // ==========================================================
+  // IMAGE HOVER
+  // ==========================================================
 
   const handleMouseEnter = () => {
     if (images.length > 1) {
@@ -152,9 +227,130 @@ const SareeCard = ({ saree }: SareeCardProps) => {
     setActiveImage(0);
   };
 
-  // =========================
+  // ==========================================================
+  // WISHLIST
+  // ==========================================================
+
+  const handleWishlist = async (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (!productId || isWishlistLoading) {
+      return;
+    }
+
+    setIsWishlistLoading(true);
+
+    try {
+      const currentlyWishlisted = wishlist.some((item) =>
+        Array.isArray(item?.products)
+          ? item.products.includes(productId)
+          : false,
+      );
+
+      // ======================================================
+      // REMOVE FROM WISHLIST
+      // ======================================================
+
+      if (currentlyWishlisted) {
+        const result = await removeWishlistMutation(productId).unwrap();
+
+        if (result?.success) {
+          dispatch(removeFromWishlistAction(productId));
+
+          toast.success(result?.message || "Removed from wishlist");
+        } else {
+          throw new Error(
+            result?.error ||
+              result?.message ||
+              "Failed to remove from wishlist",
+          );
+        }
+
+        return;
+      }
+
+      // ======================================================
+      // ADD TO WISHLIST
+      // ======================================================
+
+      const result = await addToWishlistMutation(productId).unwrap();
+
+      if (result?.success) {
+        dispatch(addToWishlistAction(result.data));
+
+        toast.success(result?.message || "Added to wishlist");
+      } else {
+        throw new Error(result?.message || "Failed to add to wishlist");
+      }
+    } catch (error: any) {
+      const status = error?.status;
+
+      if (status === 401) {
+        dispatch(toggleLoginDialog());
+
+        return;
+      }
+
+      const errorMessage =
+        error?.data?.message || error?.message || "Wishlist action failed";
+
+      toast.error(errorMessage);
+    } finally {
+      setIsWishlistLoading(false);
+    }
+  };
+
+  // ==========================================================
+  // BUY NOW
+  // ==========================================================
+
+  const handleBuyNow = async (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (!productId || isBuying) {
+      return;
+    }
+
+    setIsBuying(true);
+
+    try {
+      const result = await addToCartMutation({
+        productId,
+        quantity: 1,
+      }).unwrap();
+
+      if (result?.success && result?.data) {
+        dispatch(addToCart(result.data));
+
+        toast.success(result?.message || "Added to cart successfully");
+
+        router.push("/checkout/cart");
+      } else {
+        throw new Error(result?.message || "Failed to add to cart");
+      }
+    } catch (error: any) {
+      const status = error?.status;
+
+      if (status === 401) {
+        dispatch(toggleLoginDialog());
+
+        return;
+      }
+
+      const errorMessage =
+        error?.data?.message || error?.message || "Failed to add to cart";
+
+      toast.error(errorMessage);
+    } finally {
+      setIsBuying(false);
+    }
+  };
+
+  // ==========================================================
   // RENDER
-  // =========================
+  // ==========================================================
 
   return (
     <motion.div
@@ -189,10 +385,11 @@ const SareeCard = ({ saree }: SareeCardProps) => {
             href={`/sarees/${saree?.slug}`}
             target="_blank"
             rel="noopener noreferrer"
+            className="block"
           >
-            {/* =========================
+            {/* ==================================================
                 IMAGE AREA
-            ========================= */}
+            ================================================== */}
 
             <div
               className="
@@ -213,23 +410,27 @@ const SareeCard = ({ saree }: SareeCardProps) => {
                     width={1080}
                     height={1440}
                     sizes="
-    (max-width: 640px) 50vw,
-    (max-width: 1024px) 33vw,
-    25vw
-  "
+                        (max-width: 640px) 50vw,
+                        (max-width: 1024px) 33vw,
+                        25vw
+                      "
                     priority={index === 0}
                     className={`
-    absolute
-    inset-0
-    h-full
-    w-full
-    object-contain
-    object-top
-    transition-opacity
-    duration-700
-    ease-in-out
-    ${index === activeImage ? "z-10 opacity-100" : "z-0 opacity-0"}
-  `}
+                        absolute
+                        inset-0
+                        h-full
+                        w-full
+                        object-contain
+                        object-top
+                        transition-opacity
+                        duration-700
+                        ease-in-out
+                        ${
+                          index === activeImage
+                            ? "z-10 opacity-100"
+                            : "z-0 opacity-0"
+                        }
+                      `}
                   />
                 ))
               ) : (
@@ -249,9 +450,9 @@ const SareeCard = ({ saree }: SareeCardProps) => {
                 </div>
               )}
 
-              {/* =========================
+              {/* ================================================
                   DISCOUNT
-              ========================= */}
+              ================================================ */}
 
               {discount > 0 && (
                 <div
@@ -275,43 +476,66 @@ const SareeCard = ({ saree }: SareeCardProps) => {
                 </div>
               )}
 
-              {/* =========================
+              {/* ================================================
                   WISHLIST
-              ========================= */}
+              ================================================ */}
 
               <Button
                 type="button"
                 size="icon"
                 variant="ghost"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                }}
-                className="
+                disabled={isWishlistLoading}
+                aria-label={
+                  isInWishlist ? "Remove from wishlist" : "Add to wishlist"
+                }
+                onClick={handleWishlist}
+                className={`
                   absolute
                   right-2
                   top-2
                   z-30
                   h-8
                   w-8
+                  cursor-pointer
                   rounded-full
-                  bg-white/80
+                  bg-white/90
+                  shadow-sm
                   backdrop-blur-sm
+                  transition-all
+                  duration-200
+                  hover:scale-105
                   hover:bg-white
-                "
+                  disabled:cursor-not-allowed
+                  disabled:opacity-70
+                  ${
+                    isInWishlist
+                      ? "text-red-500"
+                      : "text-gray-700 hover:text-red-500"
+                  }
+                `}
               >
-                <Heart
-                  className="
-                    h-4
-                    w-4
-                    text-red-500
-                  "
-                />
+                {isWishlistLoading ? (
+                  <Loader2
+                    className="
+                      h-4
+                      w-4
+                      animate-spin
+                    "
+                  />
+                ) : (
+                  <Heart
+                    className="
+                      h-4
+                      w-4
+                    "
+                    fill={isInWishlist ? "currentColor" : "none"}
+                  />
+                )}
               </Button>
 
-              {/* =========================
+              {/* ================================================
                   SLIDER INDICATORS
-              ========================= */}
+              ================================================ */}
 
               {isHovered && images.length > 1 && (
                 <div
@@ -345,14 +569,18 @@ const SareeCard = ({ saree }: SareeCardProps) => {
               )}
             </div>
 
-            {/* =========================
+            {/* ==================================================
                 PRODUCT INFO
-            ========================= */}
+            ================================================== */}
 
             <div className="space-y-0.5 p-4">
-              {/* BRAND + COLOR */}
+              {/* ================================================
+                  BRAND + COLOR / BUY NOW
+              ================================================ */}
 
               <div className="relative min-h-[22px]">
+                {/* BRAND + COLOR */}
+
                 <div
                   className="
                     flex
@@ -387,46 +615,62 @@ const SareeCard = ({ saree }: SareeCardProps) => {
                   </h3>
                 </div>
 
-                {/* BUY NOW */}
+                {/* ==============================================
+                    BUY NOW
+                ============================================== */}
 
                 <Button
                   type="button"
+                  disabled={isBuying}
+                  onClick={handleBuyNow}
                   className="
-  absolute
-  left-0
-  top-0
-  h-[22px]
-  w-full
-  px-3
-  py-0
-  cursor-pointer
-  rounded-xs
-  border
-  border-red-500
-  bg-white
-  text-xs
-  font-semibold
-  leading-none
-  text-red-500
-  opacity-0
-  transition-all
-  duration-200
-  group-hover:opacity-100
-  hover:bg-red-500
-  hover:text-white
-"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-
-                    console.log("Buy Now:", saree?._id);
-                  }}
+                    absolute
+                    left-0
+                    top-0
+                    h-[22px]
+                    w-full
+                    cursor-pointer
+                    gap-1.5
+                    rounded-xs
+                    border
+                    border-red-500
+                    bg-white
+                    px-3
+                    py-0
+                    text-xs
+                    font-semibold
+                    leading-none
+                    text-red-500
+                    opacity-0
+                    transition-all
+                    duration-200
+                    group-hover:opacity-100
+                    hover:bg-red-500
+                    hover:text-white
+                    disabled:cursor-not-allowed
+                    disabled:opacity-70
+                  "
                 >
-                  Buy Now
+                  {isBuying ? (
+                    <>
+                      <Loader2
+                        className="
+                          h-3
+                          w-3
+                          animate-spin
+                        "
+                      />
+                      Adding...
+                    </>
+                  ) : (
+                    "Buy Now"
+                  )}
                 </Button>
               </div>
 
-              {/* TITLE */}
+              {/* ================================================
+                  TITLE
+              ================================================ */}
 
               <h3
                 className="
@@ -438,9 +682,9 @@ const SareeCard = ({ saree }: SareeCardProps) => {
                 {title}
               </h3>
 
-              {/* PRICE */}
-
-              {/* PRICE */}
+              {/* ================================================
+                  PRICE
+              ================================================ */}
 
               <div className="flex items-baseline gap-2">
                 <span className="text-md font-semibold text-black">
@@ -463,12 +707,13 @@ const SareeCard = ({ saree }: SareeCardProps) => {
           </Link>
         </CardContent>
 
-        {/* =========================
+        {/* ======================================================
             DECORATIVE GLOW
-        ========================= */}
+        ====================================================== */}
 
         <div
           className="
+            pointer-events-none
             absolute
             -right-8
             -top-8
@@ -482,6 +727,7 @@ const SareeCard = ({ saree }: SareeCardProps) => {
 
         <div
           className="
+            pointer-events-none
             absolute
             -bottom-8
             -left-8

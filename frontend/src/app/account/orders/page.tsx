@@ -57,10 +57,10 @@ export default function OrdersPage() {
     return (
       <div className="flex min-h-[450px] items-center justify-center">
         <NoData
-          imageUrl="/images/no-book.jpg"
+          imageUrl="/images/no-orders.png"
           message="You haven't ordered any products yet."
           description="Start shopping and your orders will appear here."
-          onClick={() => router.push("/products")}
+          onClick={() => router.push("/sarees")}
           buttonText="Start Shopping"
         />
       </div>

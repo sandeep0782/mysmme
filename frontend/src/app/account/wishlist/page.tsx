@@ -154,9 +154,9 @@ export default function WishlistPage() {
         <NoData
           message="Your wishlist is empty."
           description="Looks like you haven't added any items to your wishlist yet. Browse our collection and save your favorites!"
-          buttonText="Browse Products"
-          imageUrl="/images/wishlist.webp"
-          onClick={() => router.push("/products")}
+          buttonText="Browse Sarees"
+          imageUrl="/images/no-wishlist.png"
+          onClick={() => router.push("/sarees")}
         />
       </div>
     );
