@@ -314,10 +314,10 @@ const BrandDetailsPage = () => {
             </Link>
 
             <Link
-              href="/sarees"
+              href={`/sarees?brand=${encodeURIComponent(brand.slug)}`}
               className="inline-flex items-center justify-center rounded-full border border-gray-200 bg-white px-6 py-3.5 text-sm font-semibold text-gray-700 transition-all duration-300 hover:border-red-200 hover:text-red-600"
             >
-              Browse sarees
+              Browse {brand.name} Sarees
             </Link>
           </div>
 

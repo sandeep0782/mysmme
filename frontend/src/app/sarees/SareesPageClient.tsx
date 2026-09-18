@@ -44,10 +44,17 @@ const Page = () => {
   const [selectedOccasion, setSelectedOccasion] = useState<string[]>([]);
 
   useEffect(() => {
+    const brand = searchParams.get("brand");
     const category = searchParams.get("category");
     const collection = searchParams.get("collection");
     const occasion = searchParams.get("occasion");
 
+    // Brand from URL
+    if (brand) {
+      setSelectedBrands([brand]);
+    } else {
+      setSelectedBrands([]);
+    }
     // Category from URL
     if (category) {
       setSelectedCategory([category]);

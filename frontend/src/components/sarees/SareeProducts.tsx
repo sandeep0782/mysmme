@@ -131,7 +131,10 @@ const SareeProducts = ({
       // PRODUCT VALUES
       // =========================
 
-      const productBrand = normalize(saree.brand);
+      const productBrand =
+        typeof saree.brand === "object" && saree.brand !== null
+          ? normalize(saree.brand.slug ?? saree.brand.name)
+          : normalize(saree.brand);
 
       const productColor = normalize(saree.color);
 

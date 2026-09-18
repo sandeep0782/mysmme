@@ -18,6 +18,7 @@ interface SareeFiltersProps {
 
 interface FilterOption {
   value: string;
+  label?: string;
   count: number;
 }
 
@@ -185,18 +186,32 @@ const SareeFilters = ({
     products.forEach((product) => {
       // =========================
       // BRAND
+      // Brand comes ONLY from product list
+      // Display name, filter by slug
       // =========================
-      const brand = getDisplayValue(product.brand);
+      // =========================
+      // BRAND
+      // =========================
+      const brand =
+        typeof product.brand === "object" && product.brand !== null
+          ? product.brand
+          : null;
 
-      if (brand) {
-        const key = normalize(brand);
+      const brandName = String(brand?.name ?? product.brand ?? "").trim();
+
+      const brandSlug = String(brand?.slug ?? brandName).trim();
+
+      if (brandName && brandSlug) {
+        const key = normalize(brandSlug);
+
         const existing = brandMap.get(key);
 
         if (existing) {
           existing.count += 1;
         } else {
           brandMap.set(key, {
-            value: brand,
+            value: brandSlug,
+            label: brandName,
             count: 1,
           });
         }
@@ -327,7 +342,12 @@ const SareeFilters = ({
       return values;
     }
 
-    return values.filter((option) => normalize(option.value).includes(search));
+    return values.filter((option) => {
+      const value = normalize(option.value);
+      const label = normalize(option.label ?? option.value);
+
+      return value.includes(search) || label.includes(search);
+    });
   };
 
   // =========================
@@ -503,7 +523,7 @@ const SareeFilters = ({
                   <span className="truncate">
                     {section === "discount"
                       ? `${option.value}% and above`
-                      : option.value}
+                      : (option.label ?? option.value)}
                   </span>
 
                   <span className="shrink-0 text-gray-400">
