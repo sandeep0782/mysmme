@@ -377,7 +377,7 @@ export default function CheckoutPage() {
         message="Please log in to access your cart."
         description="You need to be logged in to view your cart and checkout."
         buttonText="Login"
-        imageUrl="/images/login.jpg"
+        imageUrl="/images/login.png"
         onClick={handleOpenLogin}
       />
     );

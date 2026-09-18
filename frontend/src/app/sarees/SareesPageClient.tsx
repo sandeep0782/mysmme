@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 
 import {
   Select,
@@ -19,6 +20,7 @@ import { useGetProductsQuery } from "@/store/api/productApi";
 import type { SareeProduct } from "@/types/product";
 
 const Page = () => {
+  const searchParams = useSearchParams();
   // =========================================================
   // FETCH PRODUCTS FROM API
   // =========================================================
@@ -38,7 +40,35 @@ const Page = () => {
   const [selectedColor, setSelectedColor] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string[]>([]);
   const [selectedDiscount, setSelectedDiscount] = useState<string[]>([]);
+  const [selectedCollection, setSelectedCollection] = useState<string[]>([]);
+  const [selectedOccasion, setSelectedOccasion] = useState<string[]>([]);
 
+  useEffect(() => {
+    const category = searchParams.get("category");
+    const collection = searchParams.get("collection");
+    const occasion = searchParams.get("occasion");
+
+    // Category from URL
+    if (category) {
+      setSelectedCategory([category]);
+    } else {
+      setSelectedCategory([]);
+    }
+
+    // Collection from URL
+    if (collection) {
+      setSelectedCollection([collection]);
+    } else {
+      setSelectedCollection([]);
+    }
+
+    // Occation from URL
+    if (occasion) {
+      setSelectedOccasion([occasion]);
+    } else {
+      setSelectedOccasion([]);
+    }
+  }, [searchParams]);
   // =========================================================
   // SORT STATE
   // =========================================================
@@ -236,6 +266,8 @@ const Page = () => {
               selectedBrands={selectedBrands}
               selectedColor={selectedColor}
               selectedCategory={selectedCategory}
+              selectedCollection={selectedCollection}
+              selectedOccasion={selectedOccasion}
               selectedDiscount={selectedDiscount}
               sortOption={sortOption}
             />

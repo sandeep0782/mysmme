@@ -100,7 +100,7 @@ export default function AccountLayout({
           message="Please log in to access your account."
           description="Sign in to manage your profile, orders, wishlist and products."
           buttonText="Login"
-          imageUrl="/images/login.jpg"
+          imageUrl="/images/login.png"
           onClick={handleOpenLogin}
         />
       </div>

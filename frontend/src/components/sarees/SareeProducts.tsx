@@ -5,6 +5,7 @@ import Pagination from "@/components/Pagination";
 import SareeCard from "./SareeCard";
 
 import { useEffect, useMemo, useState, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 
 interface SareeProductsProps {
   products: any[];
@@ -13,6 +14,8 @@ interface SareeProductsProps {
   selectedBrands: string[];
   selectedColor: string[];
   selectedCategory: string[];
+  selectedCollection: string[];
+  selectedOccasion: string[];
   selectedDiscount: string[];
   sortOption: string;
 }
@@ -24,6 +27,8 @@ const SareeProducts = ({
   selectedBrands,
   selectedColor,
   selectedCategory,
+  selectedCollection,
+  selectedOccasion,
   selectedDiscount,
   sortOption,
 }: SareeProductsProps) => {
@@ -33,8 +38,9 @@ const SareeProducts = ({
 
   const productsTopRef = useRef<HTMLDivElement>(null);
 
-  const searchTerm =
-    new URLSearchParams(window.location.search).get("search") || "";
+  const searchParams = useSearchParams();
+
+  const searchTerm = searchParams.get("search") || "";
   // =========================
   // NORMALIZE API VALUE
   // =========================
@@ -82,6 +88,15 @@ const SareeProducts = ({
     () => selectedCategory.map(normalize),
     [selectedCategory],
   );
+  const normalizedCollections = useMemo(
+    () => selectedCollection.map(normalize),
+    [selectedCollection],
+  );
+
+  const normalizedOccasions = useMemo(
+    () => selectedOccasion.map(normalize),
+    [selectedOccasion],
+  );
 
   // =========================
   // RESET PAGINATION
@@ -92,8 +107,11 @@ const SareeProducts = ({
     selectedBrands,
     selectedColor,
     selectedCategory,
+    selectedCollection,
+    selectedOccasion,
     selectedDiscount,
     sortOption,
+    searchTerm,
   ]);
 
   // =========================
@@ -117,7 +135,14 @@ const SareeProducts = ({
 
       const productColor = normalize(saree.color);
 
-      const productCategory = normalize(saree.category);
+      const productCategory =
+        typeof saree.category === "object" && saree.category !== null
+          ? normalize(saree.category.slug ?? saree.category.name)
+          : normalize(saree.category);
+
+      const productCollection = normalize(saree.collectionName);
+
+      const productOccasion = normalize(saree.occasion);
 
       const price = Number(saree.price ?? 0);
       const finalPrice = Number(saree.finalPrice ?? 0);
@@ -151,25 +176,70 @@ const SareeProducts = ({
         normalizedCategories.length === 0 ||
         normalizedCategories.includes(productCategory);
 
+      const collectionMatch =
+        normalizedCollections.length === 0 ||
+        normalizedCollections.includes(productCollection);
+
+      const occasionMatch =
+        normalizedOccasions.length === 0 ||
+        normalizedOccasions.includes(productOccasion);
+
       const discountMatch =
         selectedDiscount.length === 0 ||
         selectedDiscount.some(
           (discount) => productDiscount >= Number(discount),
         );
 
-      const searchMatch = searchTerm
-        ? (saree.title?.toLowerCase() ?? "").includes(
-            searchTerm.toLowerCase(),
-          ) ||
-          (typeof saree.brand === "string"
-            ? saree.brand.toLowerCase().includes(searchTerm.toLowerCase())
-            : false)
-        : true;
+      const normalizedSearchTerm = searchTerm.trim().toLowerCase();
+
+      const searchableValues = [
+        saree.title,
+        saree.description,
+        saree.sku,
+        saree.skuId,
+        saree.productId,
+        saree.styleId,
+        saree.collectionName,
+
+        // Brand
+        typeof saree.brand === "object" ? saree.brand?.name : saree.brand,
+
+        typeof saree.brand === "object" ? saree.brand?.slug : "",
+
+        // Category
+        typeof saree.category === "object"
+          ? saree.category?.name
+          : saree.category,
+
+        typeof saree.category === "object" ? saree.category?.slug : "",
+
+        // Color
+        typeof saree.color === "object" ? saree.color?.name : saree.color,
+
+        typeof saree.color === "object" ? saree.color?.slug : "",
+
+        // Season
+        typeof saree.season === "object" ? saree.season?.name : saree.season,
+
+        // Other useful saree fields
+        saree.fabric,
+        saree.pattern,
+        saree.occasion,
+        saree.work,
+      ]
+        .filter(Boolean)
+        .map((value) => String(value).toLowerCase());
+
+      const searchMatch =
+        normalizedSearchTerm === "" ||
+        searchableValues.some((value) => value.includes(normalizedSearchTerm));
 
       return (
         brandMatch &&
         colorMatch &&
         categoryMatch &&
+        collectionMatch &&
+        occasionMatch &&
         discountMatch &&
         searchMatch
       );
@@ -212,8 +282,11 @@ const SareeProducts = ({
     normalizedBrands,
     normalizedColors,
     normalizedCategories,
+    normalizedCollections,
+    normalizedOccasions,
     selectedDiscount,
     sortOption,
+    searchTerm,
   ]);
 
   // =========================
