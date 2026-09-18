@@ -51,13 +51,21 @@ const SareeFilters = ({
 
     return levels.map((level) => {
       const count = products.filter((product) => {
-        const price = Number(product?.price ?? 0);
-        const finalPrice = Number(product?.finalPrice ?? 0);
+        const price = Number(product?.price);
+        const finalPrice = Number(product?.finalPrice);
 
-        const discount =
-          price > finalPrice && price > 0
-            ? Math.round(((price - finalPrice) / price) * 100)
-            : 0;
+        // Invalid/missing prices = no discount
+        if (
+          !Number.isFinite(price) ||
+          !Number.isFinite(finalPrice) ||
+          price <= 0 ||
+          finalPrice <= 0 ||
+          finalPrice >= price
+        ) {
+          return false;
+        }
+
+        const discount = Math.round(((price - finalPrice) / price) * 100);
 
         return discount >= level;
       }).length;
