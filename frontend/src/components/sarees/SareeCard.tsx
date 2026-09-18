@@ -185,7 +185,11 @@ const SareeCard = ({ saree }: SareeCardProps) => {
         "
       >
         <CardContent className="p-0">
-          <Link href={`/sarees/${saree?.slug}`}>
+          <Link
+            href={`/sarees/${saree?.slug}`}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
             {/* =========================
                 IMAGE AREA
             ========================= */}
