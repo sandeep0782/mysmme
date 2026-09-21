@@ -2,10 +2,11 @@ import mongoose, { Schema, Document } from "mongoose";
 
 export interface ICategory extends Document {
   name: string;
+  shortDescription?: string;
   description?: string;
   slug: string;
   image?: string;
-imagePublicId?: string;
+  imagePublicId?: string;
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -14,15 +15,16 @@ imagePublicId?: string;
 const CategorySchema: Schema = new Schema(
   {
     name: { type: String, required: true, unique: true, trim: true },
+    shortDescription: { type: String, default: "", maxlength: 160 },
     description: { type: String, default: "" },
     slug: { type: String, required: true, unique: true, lowercase: true },
     image: { type: String },
-    imagePublicId: { type: String, default: "", },
+    imagePublicId: { type: String, default: "" },
     isActive: { type: Boolean, default: true },
   },
   {
     timestamps: true,
-  }
+  },
 );
 CategorySchema.pre<ICategory>("validate", function (next) {
   if (this.name && !this.slug) {

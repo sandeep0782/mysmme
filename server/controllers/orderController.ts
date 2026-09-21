@@ -441,29 +441,89 @@ export const createPaymentWithRazorpay = async (
   }
 };
 
-export const handleRazorpayWebhook = async (req: Request, res: Response) => {
-  const secret = process.env.RAZORPAY_WEBHOOK_SECRET as string;
+export const handleRazorpayWebhook = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  try {
+    const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
 
-  const shasum = crypto.createHmac("sha256", secret);
-  shasum.update(JSON.stringify(req.body));
-  const digest = shasum.digest("hex");
+    if (!secret) {
+      console.error("RAZORPAY_WEBHOOK_SECRET is not configured");
+      response(res, 500, "Webhook configuration error");
+      return;
+    }
 
-  if (digest === req.headers["x-razorpay-signature"]) {
-    const paymentId = req.body.payload.payment.entity.id;
-    const orderId = req.body.payload.payment.entity.order_id;
+    const signature = req.headers["x-razorpay-signature"];
 
-    await Order.findOneAndUpdate(
-      { "paymentDetails.razorpay_order_id": orderId },
+    if (!signature || typeof signature !== "string") {
+      response(res, 400, "Missing Razorpay signature");
+      return;
+    }
+
+    const rawBody = (req as Request & { rawBody?: Buffer }).rawBody;
+
+    if (!rawBody) {
+      console.error("Razorpay webhook raw body is missing");
+      response(res, 400, "Invalid webhook payload");
+      return;
+    }
+
+    const expectedSignature = crypto
+      .createHmac("sha256", secret)
+      .update(rawBody)
+      .digest("hex");
+
+    if (expectedSignature !== signature) {
+      response(res, 400, "Invalid signature");
+      return;
+    }
+
+    // Only captured payments should complete an order
+    if (req.body.event !== "payment.captured") {
+      response(res, 200, "Webhook event ignored");
+      return;
+    }
+
+    const payment = req.body?.payload?.payment?.entity;
+
+    if (!payment?.id || !payment?.order_id) {
+      response(res, 400, "Invalid payment payload");
+      return;
+    }
+
+    const paymentId = payment.id;
+    const orderId = payment.order_id;
+
+    const order = await Order.findOneAndUpdate(
+      {
+        "paymentDetails.razorpay_order_id": orderId,
+      },
       {
         paymentStatus: "completed",
         status: "processing",
         "paymentDetails.razorpay_payment_id": paymentId,
       },
+      {
+        new: true,
+      },
+    );
+
+    if (!order) {
+      console.error(`Razorpay webhook: MYSMME order not found for ${orderId}`);
+
+      response(res, 200, "Order not found");
+      return;
+    }
+
+    console.log(
+      `Razorpay payment captured: order=${orderId}, payment=${paymentId}`,
     );
 
     response(res, 200, "Webhook processed successfully");
-  } else {
-    response(res, 400, "Invalid signature");
+  } catch (error) {
+    console.error("Razorpay webhook error:", error);
+    response(res, 500, "Webhook processing failed");
   }
 };
 

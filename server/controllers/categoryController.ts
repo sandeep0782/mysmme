@@ -10,9 +10,7 @@ import { v2 as cloudinary } from "cloudinary";
 // DELETE FILE FROM CLOUDINARY
 // ============================================================
 
-export const deleteFileFromCloudinary = async (
-  publicId: string
-) => {
+export const deleteFileFromCloudinary = async (publicId: string) => {
   return await cloudinary.uploader.destroy(publicId, {
     resource_type: "image",
     invalidate: true,
@@ -23,23 +21,16 @@ export const deleteFileFromCloudinary = async (
 // CREATE CATEGORY
 // ============================================================
 
-export const createCategory = async (
-  req: Request,
-  res: Response
-) => {
+export const createCategory = async (req: Request, res: Response) => {
   let filePath: string | undefined;
   let compressedPath: string | undefined;
 
   try {
-    const { name, description } = req.body;
+    const { name, shortDescription, description } = req.body;
 
     // Validate name
     if (!name?.trim()) {
-      return response(
-        res,
-        400,
-        "Category name is required"
-      );
+      return response(res, 400, "Category name is required");
     }
 
     // Check duplicate name
@@ -48,20 +39,12 @@ export const createCategory = async (
     });
 
     if (existingCategory) {
-      return response(
-        res,
-        409,
-        "Category with this name already exists"
-      );
+      return response(res, 409, "Category with this name already exists");
     }
 
     // Image required when creating category
     if (!req.file) {
-      return response(
-        res,
-        400,
-        "Category image is required"
-      );
+      return response(res, 400, "Category image is required");
     }
 
     filePath = req.file.path;
@@ -72,9 +55,7 @@ export const createCategory = async (
 
     compressedPath = `${filePath}-compressed.webp`;
 
-    await sharp(filePath)
-      .webp({ quality: 60 })
-      .toFile(compressedPath);
+    await sharp(filePath).webp({ quality: 60 }).toFile(compressedPath);
 
     // ========================================================
     // UPLOAD TO CLOUDINARY
@@ -101,23 +82,16 @@ export const createCategory = async (
 
     const category = await Category.create({
       name: name.trim(),
+      shortDescription: shortDescription?.trim() || "",
       description: description?.trim() || "",
       image: upload.secure_url,
       imagePublicId: upload.public_id,
       isActive: true,
     });
 
-    return response(
-      res,
-      201,
-      "Category created successfully",
-      category
-    );
+    return response(res, 201, "Category created successfully", category);
   } catch (error) {
-    console.error(
-      "Create category error:",
-      error
-    );
+    console.error("Create category error:", error);
 
     if (filePath) {
       removeLocalFile(filePath);
@@ -127,11 +101,7 @@ export const createCategory = async (
       removeLocalFile(compressedPath);
     }
 
-    return response(
-      res,
-      500,
-      "Internal Server Error"
-    );
+    return response(res, 500, "Internal Server Error");
   }
 };
 
@@ -139,32 +109,17 @@ export const createCategory = async (
 // GET ALL CATEGORIES
 // ============================================================
 
-export const getAllCategories = async (
-  req: Request,
-  res: Response
-) => {
+export const getAllCategories = async (req: Request, res: Response) => {
   try {
     const categories = await Category.find().sort({
       createdAt: -1,
     });
 
-    return response(
-      res,
-      200,
-      "Categories fetched successfully",
-      categories
-    );
+    return response(res, 200, "Categories fetched successfully", categories);
   } catch (error) {
-    console.error(
-      "Get categories error:",
-      error
-    );
+    console.error("Get categories error:", error);
 
-    return response(
-      res,
-      500,
-      "Internal Server Error"
-    );
+    return response(res, 500, "Internal Server Error");
   }
 };
 
@@ -172,40 +127,19 @@ export const getAllCategories = async (
 // GET CATEGORY BY ID
 // ============================================================
 
-export const getCategoryById = async (
-  req: Request,
-  res: Response
-) => {
+export const getCategoryById = async (req: Request, res: Response) => {
   try {
-    const category = await Category.findById(
-      req.params.id
-    );
+    const category = await Category.findById(req.params.id);
 
     if (!category) {
-      return response(
-        res,
-        404,
-        "Category not found"
-      );
+      return response(res, 404, "Category not found");
     }
 
-    return response(
-      res,
-      200,
-      "Category fetched successfully",
-      category
-    );
+    return response(res, 200, "Category fetched successfully", category);
   } catch (error) {
-    console.error(
-      "Get category error:",
-      error
-    );
+    console.error("Get category error:", error);
 
-    return response(
-      res,
-      500,
-      "Internal Server Error"
-    );
+    return response(res, 500, "Internal Server Error");
   }
 };
 
@@ -213,35 +147,21 @@ export const getCategoryById = async (
 // UPDATE CATEGORY
 // ============================================================
 
-export const updateCategory = async (
-  req: Request,
-  res: Response
-) => {
+export const updateCategory = async (req: Request, res: Response) => {
   let filePath: string | undefined;
   let compressedPath: string | undefined;
 
   try {
-    const {
-      name,
-      description,
-      isActive,
-    } = req.body;
+    const { name, shortDescription, description, isActive } = req.body;
 
-    const category = await Category.findById(
-      req.params.id
-    );
+    const category = await Category.findById(req.params.id);
 
     if (!category) {
-      return response(
-        res,
-        404,
-        "Category not found"
-      );
+      return response(res, 404, "Category not found");
     }
 
     // Keep old image public ID
-    const oldImagePublicId =
-      category.imagePublicId;
+    const oldImagePublicId = category.imagePublicId;
 
     // ========================================================
     // UPDATE NAME
@@ -255,9 +175,12 @@ export const updateCategory = async (
     // UPDATE DESCRIPTION
     // ========================================================
 
+    if (shortDescription !== undefined) {
+      category.shortDescription = shortDescription.trim();
+    }
+
     if (description !== undefined) {
-      category.description =
-        description.trim();
+      category.description = description.trim();
     }
 
     // ========================================================
@@ -265,9 +188,7 @@ export const updateCategory = async (
     // ========================================================
 
     if (isActive !== undefined) {
-      category.isActive =
-        isActive === true ||
-        isActive === "true";
+      category.isActive = isActive === true || isActive === "true";
     }
 
     // ========================================================
@@ -275,42 +196,32 @@ export const updateCategory = async (
     // ========================================================
 
     if (req.file) {
-      console.log(
-        "req.file:",
-        req.file
-      );
+      console.log("req.file:", req.file);
 
       filePath = req.file.path;
 
       // Compress image
-      compressedPath =
-        `${filePath}-compressed.webp`;
+      compressedPath = `${filePath}-compressed.webp`;
 
-      await sharp(filePath)
-        .webp({ quality: 60 })
-        .toFile(compressedPath);
+      await sharp(filePath).webp({ quality: 60 }).toFile(compressedPath);
 
       // Upload NEW image
-      const upload =
-        await uploadFileToCloudinary({
-          ...req.file,
-          path: compressedPath,
-        });
+      const upload = await uploadFileToCloudinary({
+        ...req.file,
+        path: compressedPath,
+      });
 
       // Save NEW image information
-      category.image =
-        upload.secure_url;
+      category.image = upload.secure_url;
 
-      category.imagePublicId =
-        upload.public_id;
+      category.imagePublicId = upload.public_id;
     }
 
     // ========================================================
     // SAVE DATABASE FIRST
     // ========================================================
 
-    const updatedCategory =
-      await category.save();
+    const updatedCategory = await category.save();
 
     // ========================================================
     // DELETE OLD CLOUDINARY IMAGE
@@ -320,30 +231,18 @@ export const updateCategory = async (
     if (
       req.file &&
       oldImagePublicId &&
-      oldImagePublicId !==
-        category.imagePublicId
+      oldImagePublicId !== category.imagePublicId
     ) {
       try {
-        console.log(
-          "Deleting Cloudinary public ID:",
-          oldImagePublicId
-        );
+        console.log("Deleting Cloudinary public ID:", oldImagePublicId);
 
-        const result =
-          await deleteFileFromCloudinary(
-            oldImagePublicId
-          );
+        const result = await deleteFileFromCloudinary(oldImagePublicId);
 
-        console.log(
-          "Cloudinary destroy result:",
-          result
-        );
-      } catch (
-        cloudinaryError
-      ) {
+        console.log("Cloudinary destroy result:", result);
+      } catch (cloudinaryError) {
         console.error(
           "Failed to delete old Cloudinary category image:",
-          cloudinaryError
+          cloudinaryError,
         );
       }
     }
@@ -358,39 +257,23 @@ export const updateCategory = async (
     }
 
     if (compressedPath) {
-      removeLocalFile(
-        compressedPath
-      );
+      removeLocalFile(compressedPath);
       compressedPath = undefined;
     }
 
-    return response(
-      res,
-      200,
-      "Category updated successfully",
-      updatedCategory
-    );
+    return response(res, 200, "Category updated successfully", updatedCategory);
   } catch (error) {
-    console.error(
-      "Update category error:",
-      error
-    );
+    console.error("Update category error:", error);
 
     if (filePath) {
       removeLocalFile(filePath);
     }
 
     if (compressedPath) {
-      removeLocalFile(
-        compressedPath
-      );
+      removeLocalFile(compressedPath);
     }
 
-    return response(
-      res,
-      500,
-      "Internal Server Error"
-    );
+    return response(res, 500, "Internal Server Error");
   }
 };
 
@@ -398,75 +281,37 @@ export const updateCategory = async (
 // DELETE CATEGORY
 // ============================================================
 
-export const deleteCategory = async (
-  req: Request,
-  res: Response
-) => {
+export const deleteCategory = async (req: Request, res: Response) => {
   try {
-    const category =
-      await Category.findById(
-        req.params.id
-      );
+    const category = await Category.findById(req.params.id);
 
     if (!category) {
-      return response(
-        res,
-        404,
-        "Category not found"
-      );
+      return response(res, 404, "Category not found");
     }
 
     // Keep public ID before deleting DB document
-    const imagePublicId =
-      category.imagePublicId;
+    const imagePublicId = category.imagePublicId;
 
     // Delete database record
-    await Category.findByIdAndDelete(
-      req.params.id
-    );
+    await Category.findByIdAndDelete(req.params.id);
 
     // Delete Cloudinary image
     if (imagePublicId) {
       try {
-        console.log(
-          "Deleting category image:",
-          imagePublicId
-        );
+        console.log("Deleting category image:", imagePublicId);
 
-        const result =
-          await deleteFileFromCloudinary(
-            imagePublicId
-          );
+        const result = await deleteFileFromCloudinary(imagePublicId);
 
-        console.log(
-          "Cloudinary destroy result:",
-          result
-        );
-      } catch (
-        cloudinaryError
-      ) {
-        console.error(
-          "Failed to delete category image:",
-          cloudinaryError
-        );
+        console.log("Cloudinary destroy result:", result);
+      } catch (cloudinaryError) {
+        console.error("Failed to delete category image:", cloudinaryError);
       }
     }
 
-    return response(
-      res,
-      200,
-      "Category deleted successfully"
-    );
+    return response(res, 200, "Category deleted successfully");
   } catch (error) {
-    console.error(
-      "Delete category error:",
-      error
-    );
+    console.error("Delete category error:", error);
 
-    return response(
-      res,
-      500,
-      "Internal Server Error"
-    );
+    return response(res, 500, "Internal Server Error");
   }
 };

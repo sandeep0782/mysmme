@@ -37,9 +37,8 @@ import whatsappRoutes from "./routes/whatsappRoutes";
 
 // Load environment variables BEFORE importing/starting
 // anything that depends on process.env.
-dotenv.config({
-  path: "/Users/krishna/Desktop/mysmme/server/.env",
-});
+
+dotenv.config();
 
 const PORT = Number(process.env.PORT) || 8000;
 
@@ -95,7 +94,16 @@ app.use(cors(corsOptions));
 // Middleware
 // -----------------------------------------------------
 
-app.use(express.json());
+// app.use(express.json());
+app.use(
+  express.json({
+    verify: (req: Request, _res, buf) => {
+      if (req.originalUrl === "/api/order/razorpay-webhook") {
+        (req as Request & { rawBody?: Buffer }).rawBody = Buffer.from(buf);
+      }
+    },
+  }),
+);
 
 app.use(cookieParser());
 
