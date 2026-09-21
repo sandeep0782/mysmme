@@ -318,7 +318,7 @@ export default function CheckoutPage() {
       const razorpayOrder = data.data.order;
 
       const options = {
-        key: "rzp_test_78N43t3YczV2lT",
+        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
         amount: razorpayOrder.amount,
         currency: razorpayOrder.currency,
         name: "MYSMMEE",
