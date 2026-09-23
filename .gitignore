@@ -29,3 +29,8 @@ docker-compose.override.yml
 # Server debug files
 /server/debug-original.jpg
 /server/debug-transformed.jpg
+
+# Environment files
+server/.env
+frontend/.env
+admin/.env
