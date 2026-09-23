@@ -25,6 +25,33 @@ router.get(
 );
 
 //google callback routes
+// router.get(
+//   "/google/callback",
+//   passport.authenticate("google", {
+//     failureRedirect: `${process.env.NEXT_PUBLIC_SITE_URL}`,
+//     session: false,
+//   }),
+//   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+//     try {
+//       // Cast req.user to IUser
+//       const user = req.user as IUser;
+//       const accessToken = await generateToken(user);
+
+//       // Set the token in the cookie
+//       res.cookie("access_token", accessToken, {
+//         httpOnly: true,
+//         sameSite: "none",
+//         secure: true,
+//         maxAge: 24 * 60 * 60 * 1000,
+//       });
+
+//       res.redirect(`${process.env.NEXT_PUBLIC_SITE_URL}`);
+//     } catch (error) {
+//       next(error);
+//     }
+//   },
+// );
+
 router.get(
   "/google/callback",
   passport.authenticate("google", {
@@ -33,15 +60,15 @@ router.get(
   }),
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      // Cast req.user to IUser
       const user = req.user as IUser;
       const accessToken = await generateToken(user);
 
-      // Set the token in the cookie
       res.cookie("access_token", accessToken, {
         httpOnly: true,
-        sameSite: "none",
         secure: true,
+        sameSite: "none",
+        domain: ".mysmme.com",
+        path: "/",
         maxAge: 24 * 60 * 60 * 1000,
       });
 
@@ -51,4 +78,5 @@ router.get(
     }
   },
 );
+
 export default router;
