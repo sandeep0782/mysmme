@@ -9,6 +9,7 @@ const API_URLS = {
 type Category = {
     _id: string;
     name: string;
+    shortDescription: string;
     description: string;
     isActive: boolean;
     createdAt: string;

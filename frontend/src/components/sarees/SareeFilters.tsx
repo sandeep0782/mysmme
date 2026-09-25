@@ -58,31 +58,33 @@ const SareeFilters = ({
       { value: "70", min: 70, max: Infinity },
     ];
 
-    return ranges.map(({ value, min, max }) => {
-      const count = products.filter((product) => {
-        const price = Number(product?.price);
-        const finalPrice = Number(product?.finalPrice);
+    return ranges
+      .map(({ value, min, max }) => {
+        const count = products.filter((product) => {
+          const price = Number(product?.price);
+          const finalPrice = Number(product?.finalPrice);
 
-        if (
-          !Number.isFinite(price) ||
-          !Number.isFinite(finalPrice) ||
-          price <= 0 ||
-          finalPrice <= 0 ||
-          finalPrice >= price
-        ) {
-          return false;
-        }
+          if (
+            !Number.isFinite(price) ||
+            !Number.isFinite(finalPrice) ||
+            price <= 0 ||
+            finalPrice <= 0 ||
+            finalPrice >= price
+          ) {
+            return false;
+          }
 
-        const discount = Math.round(((price - finalPrice) / price) * 100);
+          const discount = Math.round(((price - finalPrice) / price) * 100);
 
-        return discount >= min && discount <= max;
-      }).length;
+          return discount >= min && discount <= max;
+        }).length;
 
-      return {
-        value,
-        count,
-      };
-    });
+        return {
+          value,
+          count,
+        };
+      })
+      .filter((option) => option.count > 0);
   }, [products]);
   // =========================
   // DISPLAY VALUE

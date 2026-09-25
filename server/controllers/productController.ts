@@ -374,7 +374,10 @@ export const createProduct = async (req: Request, res: Response) => {
 
 export const getAllProducts = async (req: Request, res: Response) => {
   try {
-    const products = await Product.find()
+    const products = await Product.find({
+      isActive: true,
+      
+    })
       .sort({ createdAt: -1 })
       .populate("brand", "name slug")
       .populate("color", "name slug")
