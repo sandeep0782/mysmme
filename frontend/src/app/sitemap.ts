@@ -3,7 +3,7 @@ import type { MetadataRoute } from "next";
 export const dynamic = "force-dynamic";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://mysmme.com";
-const API_URL = process.env.API_URL || "http://mysmme-server:8000/api";
+const API_URL = process.env.API_URL || "http://localhost:8000/api";
 
 type Product = {
   slug?: string;
@@ -43,6 +43,7 @@ async function fetchProducts(): Promise<Product[]> {
   const result: ProductsApiResponse = await response.json();
 
   return result.data || [];
+  console.log("result", result);
 }
 
 async function fetchCategories(): Promise<Category[]> {
