@@ -40,6 +40,7 @@ export default function Home() {
       />
 
       <main>
+        <h1 className="sr-only">MYSMME - Online Saree Shopping in India</h1>
         <Hero />
         <CategorySlider />
         <NewSarees />
