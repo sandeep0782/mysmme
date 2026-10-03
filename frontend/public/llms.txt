@@ -1,0 +1,65 @@
+# MYSMME
+
+> MYSMME is an online saree marketplace in India focused on helping customers discover and shop sarees across different fabrics, styles, occasions and price ranges.
+
+Website: https://mysmme.com
+API: https://api.mysmme.com
+
+## Main Sections
+
+- Home: https://mysmme.com
+- Sarees: https://mysmme.com/sarees
+- New Arrivals: https://mysmme.com/new-arrivals
+- Sarees Under ₹999: https://mysmme.com/under-999
+- Premium Sarees: https://mysmme.com/premium-sarees
+- Wedding Collection: https://mysmme.com/wedding-collection
+- Daily Wear Sarees: https://mysmme.com/daily-wear
+- Deals: https://mysmme.com/deals
+- Contact: https://mysmme.com/contact
+
+## Product Categories
+
+MYSMME features sarees including:
+
+- Silk Sarees
+- Banarasi Silk Sarees
+- Cotton Sarees
+- Linen Sarees
+- Georgette Sarees
+- Chiffon Sarees
+- Organza Sarees
+- Designer Sarees
+- Party Wear Sarees
+- Wedding Sarees
+- Daily Wear Sarees
+- Office Wear Sarees
+
+## About MYSMME
+
+MYSMME is a saree-focused online marketplace serving customers in India.
+
+Customers can discover sarees based on fabric, colour, category, occasion, brand and price.
+
+The marketplace includes affordable sarees as well as premium collections from different sellers and brands.
+
+## Important Information
+
+Canonical website:
+https://mysmme.com
+
+Primary market:
+India
+
+Primary product:
+Sarees
+
+Language:
+English
+
+## Crawling
+
+For crawling rules, refer to:
+https://mysmme.com/robots.txt
+
+For sitemap URLs, refer to:
+https://mysmme.com/sitemap.xml
