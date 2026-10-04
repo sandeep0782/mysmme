@@ -315,7 +315,8 @@ export function OrderDetailsDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ShoppingBag className="h-5 w-5 text-orange-500" />
-            Order #{order._id.slice(-6).toUpperCase()}
+            Order #{order._id}
+            {/* Order #{order._id.slice(-6).toUpperCase()} */}
           </DialogTitle>
 
           <DialogDescription>

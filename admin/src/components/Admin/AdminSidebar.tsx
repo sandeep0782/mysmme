@@ -28,6 +28,7 @@ import {
   Users,
   Video,
   X,
+  TicketPercent,
 } from "lucide-react";
 
 /* ================================================================
@@ -147,6 +148,12 @@ const menuItems: SidebarItem[] = [
     icon: <Store className="h-5 w-5" />,
     label: "Seller",
     href: "/platform/admin/seller",
+  },
+
+  {
+    icon: <TicketPercent className="h-5 w-5" />,
+    label: "Coupons",
+    href: "/platform/admin/coupons",
   },
 ];
 

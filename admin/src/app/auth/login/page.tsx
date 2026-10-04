@@ -57,7 +57,7 @@ export default function LoginPage() {
         }
 
         if (role === "freelancer") {
-          window.location.href = `${process.env.NEXT_PUBLIC_ADMIN_URL}/platform/freelancer`;
+          window.location.href = `${process.env.NEXT_PUBLIC_ADMIN_URL}/platform/freelancer/dashboard`;
           return;
         }
       }

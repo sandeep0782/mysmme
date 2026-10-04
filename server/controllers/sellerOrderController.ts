@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import SellerOrder from "../models/SellerOrder";
 import { response } from "../utils/responseHandler";
 import { syncParentOrderStatus } from "../utils/syncOrderStatus";
+import { LogisticsProviderName } from "../models/Shipping";
 
 export const getSellerOrders = async (req: Request, res: Response) => {
   try {
@@ -192,19 +193,23 @@ export const dispatchSellerOrder = async (req: Request, res: Response) => {
     const sellerId = req.id;
     const { id } = req.params;
 
-    const { courierName, trackingNumber, trackingUrl } = req.body;
+    // const { courierName, trackingNumber, trackingUrl } = req.body;
+
+    const body = req.body ?? {};
+
+    const provider = (body.provider as LogisticsProviderName) || "shiprocket";
 
     if (!sellerId) {
       return response(res, 401, "Unauthorized");
     }
 
-    if (!courierName) {
-      return response(res, 400, "Courier name is required");
-    }
+    // if (!courierName) {
+    //   return response(res, 400, "Courier name is required");
+    // }
 
-    if (!trackingNumber) {
-      return response(res, 400, "Tracking number is required");
-    }
+    // if (!trackingNumber) {
+    //   return response(res, 400, "Tracking number is required");
+    // }
 
     const sellerOrder = await SellerOrder.findOne({
       _id: id,
@@ -219,9 +224,9 @@ export const dispatchSellerOrder = async (req: Request, res: Response) => {
     sellerOrder.status = "shipped";
 
     sellerOrder.shipping = {
-      courierName,
-      trackingNumber,
-      trackingUrl,
+      // courierName,
+      // trackingNumber,
+      // trackingUrl,
       dispatchedAt: new Date(),
     };
 

@@ -24,6 +24,7 @@ export const createShipment = async (
 
     const validProviders: LogisticsProviderName[] = [
       "shiprocket",
+      "expressfly",
       "delhivery",
       "bluedart",
       "xpressbees",

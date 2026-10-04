@@ -2,6 +2,7 @@ import mongoose, { Document, Schema } from "mongoose";
 
 export type LogisticsProviderName =
   | "shiprocket"
+  | "expressfly"
   | "delhivery"
   | "bluedart"
   | "xpressbees"
@@ -135,7 +136,14 @@ const shippingSchema = new Schema<IShipping>(
 
     provider: {
       type: String,
-      enum: ["shiprocket", "delhivery", "bluedart", "xpressbees", "other"],
+      enum: [
+        "shiprocket",
+        "expressfly",
+        "delhivery",
+        "bluedart",
+        "xpressbees",
+        "other",
+      ],
       required: true,
       index: true,
     },

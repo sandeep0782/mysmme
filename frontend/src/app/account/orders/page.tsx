@@ -321,7 +321,8 @@ function OrderTableRow({
 
           <div>
             <p className="text-sm font-semibold text-slate-900">
-              #{order._id.slice(-6).toUpperCase()}
+              #{order._id}
+              {/* #{order._id.slice(-6).toUpperCase()} */}
             </p>
 
             <p className="mt-0.5 text-xs text-slate-400">

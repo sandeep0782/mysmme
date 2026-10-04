@@ -35,6 +35,7 @@ import sellerRoutes from "./routes/sellerRoutes";
 import careerRoutes from "./routes/careerRoutes";
 import whatsappRoutes from "./routes/whatsappRoutes";
 import contactRoutes from "./routes/contactRoutes";
+import couponRoutes from "./routes/couponRoutes";
 
 // Load environment variables BEFORE importing/starting
 // anything that depends on process.env.
@@ -163,6 +164,7 @@ app.use("/api/v1/verify", gstVerificationRoutes);
 app.use("/api/careers", careerRoutes);
 app.use("/api/contact", contactRoutes);
 app.use("/api/whatsapp", whatsappRoutes);
+app.use("/api/coupons", couponRoutes);
 
 // -----------------------------------------------------
 // Start server
