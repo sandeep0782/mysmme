@@ -2,8 +2,13 @@ import type { MetadataRoute } from "next";
 
 export const dynamic = "force-dynamic";
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://mysmme.com";
-const API_URL = process.env.API_URL || "http://localhost:8000/api";
+const SITE_URL = (
+  process.env.NEXT_PUBLIC_SITE_URL || "https://mysmme.com"
+).replace(/\/$/, "");
+
+const API_URL = (
+  process.env.NEXT_PUBLIC_API_URL || "https://api.mysmme.com/api"
+).replace(/\/$/, "");
 
 type Product = {
   slug?: string;
@@ -22,42 +27,65 @@ type Category = {
 
 type ProductsApiResponse = {
   success: boolean;
-  data: Product[];
+  data?: Product[];
 };
 
 type CategoriesApiResponse = {
   success: boolean;
   message?: string;
-  data: Category[];
+  data?: Category[];
 };
 
 async function fetchProducts(): Promise<Product[]> {
-  const response = await fetch(`${API_URL}/products`, {
-    cache: "no-store",
-  });
+  try {
+    const response = await fetch(`${API_URL}/products`, {
+      cache: "no-store",
+    });
 
-  if (!response.ok) {
-    throw new Error(`Products API failed: ${response.status}`);
+    if (!response.ok) {
+      console.error(
+        "[SITEMAP] Products API failed:",
+        response.status,
+        response.statusText,
+      );
+
+      return [];
+    }
+
+    const result: ProductsApiResponse = await response.json();
+
+    return Array.isArray(result.data) ? result.data : [];
+  } catch (error) {
+    console.error("[SITEMAP] Products fetch error:", error);
+
+    return [];
   }
-
-  const result: ProductsApiResponse = await response.json();
-
-  return result.data || [];
-  console.log("result", result);
 }
 
 async function fetchCategories(): Promise<Category[]> {
-  const response = await fetch(`${API_URL}/category`, {
-    cache: "no-store",
-  });
+  try {
+    const response = await fetch(`${API_URL}/category`, {
+      cache: "no-store",
+    });
 
-  if (!response.ok) {
-    throw new Error(`Categories API failed: ${response.status}`);
+    if (!response.ok) {
+      console.error(
+        "[SITEMAP] Categories API failed:",
+        response.status,
+        response.statusText,
+      );
+
+      return [];
+    }
+
+    const result: CategoriesApiResponse = await response.json();
+
+    return Array.isArray(result.data) ? result.data : [];
+  } catch (error) {
+    console.error("[SITEMAP] Categories fetch error:", error);
+
+    return [];
   }
-
-  const result: CategoriesApiResponse = await response.json();
-
-  return result.data || [];
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
@@ -72,13 +100,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     (category) => category.isActive && category.slug && category.name?.trim(),
   );
 
-  console.log("SITEMAP PRODUCTS:", products.length);
-
-  console.log(
-    "SITEMAP CATEGORIES:",
-    activeCategories.length,
-    activeCategories.map((category) => category.slug),
-  );
+  console.log("[SITEMAP] API URL:", API_URL);
+  console.log("[SITEMAP] Products:", products.length);
+  console.log("[SITEMAP] Categories:", activeCategories.length);
 
   return [
     // ============================================================
@@ -172,7 +196,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     // ============================================================
     // CATEGORY DETAIL PAGES
-    // /category/[slug]
     // ============================================================
 
     ...activeCategories.map((category) => ({
@@ -184,7 +207,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     // ============================================================
     // PRODUCT DETAIL PAGES
-    // /sarees/[slug]
     // ============================================================
 
     ...products
