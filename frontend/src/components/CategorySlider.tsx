@@ -1,5 +1,5 @@
 "use client";
-
+import { cloudinaryImage } from "@/lib/cloudinary";
 import Image from "next/image";
 import Link from "next/link";
 import React, { useEffect, useRef } from "react";
@@ -106,7 +106,7 @@ const CategorySlider = () => {
         ================================================== */}
 
         <header className="mb-10 text-center">
-          <p className="text-sm font-semibold uppercase tracking-[0.25em] text-red-500">
+          <p className="text-sm font-semibold uppercase tracking-[0.25em] text-red-700">
             Explore Sarees
           </p>
 
@@ -200,7 +200,7 @@ const CategorySlider = () => {
                     <div className="relative mx-auto h-24 w-24 overflow-hidden rounded-full border-4 border-white shadow-md transition-all duration-300 group-hover:shadow-xl sm:h-28 sm:w-28 md:h-32 md:w-32">
                       {category.image ? (
                         <Image
-                          src={category.image}
+                          src={cloudinaryImage(category.image, 320, 320)}
                           alt={`${categoryName} saree collection`}
                           fill
                           sizes="(max-width: 640px) 96px, (max-width: 768px) 112px, 128px"

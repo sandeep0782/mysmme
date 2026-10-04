@@ -6,42 +6,42 @@ import React, { useEffect, useState } from "react";
 
 const bannerSlides = [
   {
-    image: "/images/saree-1.jpg",
+    image: "/images/saree-1.webp",
     eyebrow: "Timeless • Elegant • Indian",
     title: "Discover Your Perfect Saree",
     description:
       "Explore beautiful sarees crafted with timeless designs, graceful colors and elegant Indian craftsmanship.",
   },
   {
-    image: "/images/saree-2.jpg",
+    image: "/images/saree-2.webp",
     eyebrow: "Silk • Luxury • Tradition",
     title: "Elegance Woven in Silk",
     description:
       "Experience the richness of luxurious silk sarees, designed to make every celebration truly special.",
   },
   {
-    image: "/images/saree-3.jpg",
+    image: "/images/saree-3.webp",
     eyebrow: "Banarasi • Zari • Heritage",
     title: "The Timeless Charm of Banarasi",
     description:
       "Discover exquisite Banarasi sarees featuring intricate zari work, traditional motifs and timeless beauty.",
   },
   {
-    image: "/images/saree-4.jpg",
+    image: "/images/saree-4.webp",
     eyebrow: "Handloom • Craft • Culture",
     title: "Celebrate the Art of Handloom",
     description:
       "Embrace authentic handloom sarees created with beautiful weaves, natural textures and generations of craftsmanship.",
   },
   {
-    image: "/images/saree-5.jpg",
+    image: "/images/saree-5.webp",
     eyebrow: "Festive • Vibrant • Beautiful",
     title: "Dress for Every Celebration",
     description:
       "Find vibrant festive sarees that bring together beautiful colors, elegant designs and effortless glamour.",
   },
   {
-    image: "/images/saree-6.jpg",
+    image: "/images/saree-6.webp",
     eyebrow: "Modern • Graceful • You",
     title: "Sarees for Your Signature Style",
     description:
@@ -69,15 +69,23 @@ const Hero = () => {
   };
 
   useEffect(() => {
-    if (isPaused) {
-      return;
-    }
+    if (isPaused) return;
 
-    const timer = window.setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % totalSlides);
-    }, 5000);
+    let interval: number | undefined;
 
-    return () => window.clearInterval(timer);
+    const startTimer = window.setTimeout(() => {
+      interval = window.setInterval(() => {
+        setCurrentSlide((prev) => (prev + 1) % totalSlides);
+      }, 8000);
+    }, 8000);
+
+    return () => {
+      window.clearTimeout(startTimer);
+
+      if (interval) {
+        window.clearInterval(interval);
+      }
+    };
   }, [isPaused, totalSlides]);
 
   return (
@@ -96,8 +104,9 @@ const Hero = () => {
           src={slide.image}
           alt={slide.title}
           fill
-          priority={currentSlide === 0}
-          fetchPriority={currentSlide === 0 ? "high" : "auto"}
+          priority
+          fetchPriority="high"
+          loading="eager"
           sizes="100vw"
           className="object-cover object-center brightness-110 saturate-110"
         />

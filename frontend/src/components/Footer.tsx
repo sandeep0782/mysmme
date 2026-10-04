@@ -38,7 +38,7 @@ export default function Footer() {
                 </span>
               </h2>
 
-              <p className="mt-3 max-w-xl text-sm leading-6 text-gray-500 sm:text-base">
+              <p className="mt-3 max-w-xl text-sm leading-6 text-gray-300 sm:text-base">
                 Discover beautiful sarees from brands and sellers across India,
                 or join MYSMME and start selling your saree collection online.
               </p>
@@ -142,13 +142,13 @@ export default function Footer() {
                   MYSMME
                 </p>
 
-                <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-600">
+                <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-300">
                   Saree Marketplace
                 </p>
               </div>
             </Link>
 
-            <p className="mt-5 max-w-sm text-sm leading-6 text-gray-500">
+            <p className="mt-5 max-w-sm text-sm leading-6 text-gray-300">
               MYSMME is India&apos;s dedicated saree marketplace, bringing saree
               shoppers, brands and sellers together in one place.
             </p>
@@ -298,7 +298,7 @@ export default function Footer() {
                 Sarees for every style and occasion
               </h3>
 
-              <p className="mt-2 text-sm leading-6 text-gray-600">
+              <p className="mt-2 text-sm leading-6 text-gray-300">
                 Explore sarees by category, brand and occasion and discover
                 styles from sellers across India.
               </p>
@@ -329,7 +329,7 @@ export default function Footer() {
             <TrustItem icon={<BadgeIcon />} text="Verified Sellers" />
           </div>
 
-          <span className="text-xs text-gray-600">
+          <span className="text-xs text-gray-300">
             India&apos;s Dedicated Saree Marketplace
           </span>
         </div>
@@ -339,7 +339,7 @@ export default function Footer() {
         ============================================================ */}
 
         <div className="flex flex-col gap-5 border-t border-white/10 py-6 text-xs md:flex-row md:items-center md:justify-between">
-          <p className="text-gray-600">
+          <p className="text-gray-300">
             © {new Date().getFullYear()} MYSMME. All rights reserved.
           </p>
 
@@ -404,7 +404,7 @@ function FooterColumn({
                     inline-flex
                     items-center
                     text-sm
-                    text-gray-500
+                    text-gray-300
                     transition-colors
                     hover:text-white
                   "
@@ -436,7 +436,7 @@ function FooterColumn({
                     inline-flex
                     items-center
                     text-sm
-                    text-gray-500
+                    text-gray-300
                     transition-colors
                     hover:text-white
                   "
@@ -530,7 +530,7 @@ function SocialButton({
         border
         border-white/10
         bg-white/[0.03]
-        text-gray-500
+        text-gray-300
         transition-all
         duration-200
         hover:border-red-500/30
@@ -549,7 +549,7 @@ function SocialButton({
 
 function TrustItem({ icon, text }: { icon: ReactNode; text: string }) {
   return (
-    <div className="flex items-center gap-2 text-xs text-gray-600">
+    <div className="flex items-center gap-2 text-xs text-gray-300">
       <span className="text-red-500">{icon}</span>
 
       <span>{text}</span>

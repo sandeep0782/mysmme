@@ -850,11 +850,11 @@ const Brands = () => {
                           <div>
                             <p
                               className="
-                                  text-[9px]
+                                  text-[10px]
                                   font-bold
                                   uppercase
                                   tracking-wider
-                                  text-gray-400
+                                  text-gray-700
                                 "
                             >
                               Spotlight

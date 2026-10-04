@@ -1,11 +1,11 @@
 "use client";
-
+import { cloudinaryImage } from "@/lib/cloudinary";
 import Image from "next/image";
 import Link from "next/link";
 import React, { useEffect, useMemo, useState } from "react";
 import { useGetProductsQuery } from "@/store/api/productApi";
 
-const FALLBACK_IMAGE = "/images/saree-1.jpg";
+const FALLBACK_IMAGE = "/images/saree-1.webp";
 
 interface Product {
   _id: string;
@@ -174,7 +174,7 @@ const ShopByOccasion = () => {
           {/* Heading */}
 
           <div className="mb-10 text-center">
-            <p className="text-sm font-semibold uppercase tracking-[0.25em] text-pink-600">
+            <p className="text-sm font-semibold uppercase tracking-[0.25em] text-pink-700">
               Shop By Occasion
             </p>
 
@@ -232,7 +232,7 @@ const ShopByOccasion = () => {
         ====================================================== */}
 
         <div className="mb-10 text-center">
-          <p className="text-sm font-semibold uppercase tracking-[0.25em] text-pink-600">
+          <p className="text-sm font-semibold uppercase tracking-[0.25em] text-pink-700">
             Shop By Occasion
           </p>
 
@@ -326,7 +326,10 @@ const ShopByOccasion = () => {
                             "
                           >
                             <Image
-                              src={occasion.image || FALLBACK_IMAGE}
+                              src={cloudinaryImage(
+                                occasion.image || FALLBACK_IMAGE,
+                                700,
+                              )}
                               alt={`${occasion.name} Sarees`}
                               fill
                               sizes="

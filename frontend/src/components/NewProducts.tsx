@@ -316,7 +316,7 @@ const NewProducts = () => {
                                     transition-all
                                     duration-300
                                     ${currentSlide === index
-                                        ? "w-8 bg-red-500"
+                                        ? "w-8 bg-red-700"
                                         : "w-2 bg-gray-300 hover:bg-red-300"
                                     }
                                 `}
@@ -405,7 +405,7 @@ const ProductCard = ({ saree, discount }: ProductCardProps) => {
                             left-0
                             top-3
                             rounded-r-full
-                            bg-red-500
+                            bg-red-700
                             px-3
                             py-1.5
                             text-xs

@@ -1,11 +1,11 @@
 "use client";
-
+import { cloudinaryImage } from "@/lib/cloudinary";
 import { useGetProductsQuery } from "@/store/api/productApi";
 import Image from "next/image";
 import Link from "next/link";
 import React, { useEffect, useState } from "react";
 
-const FALLBACK_IMAGE = "/images/saree-1.jpg";
+const FALLBACK_IMAGE = "/images/saree-1.webp";
 
 const NewSarees = () => {
   const [currentSareeSlide, setCurrentSareeSlide] = useState(0);
@@ -118,7 +118,7 @@ const NewSarees = () => {
       <section className="bg-gray-50 py-16">
         <div className="container mx-auto px-4">
           <div className="mb-12 text-center">
-            <p className="mb-3 text-sm font-semibold uppercase tracking-[0.25em] text-red-500">
+            <p className="mb-3 text-sm font-semibold uppercase tracking-[0.25em] text-red-700">
               New Arrivals
             </p>
 
@@ -159,7 +159,7 @@ const NewSarees = () => {
                     SECTION HEADING
         ============================================ */}
         <div className="mb-12 text-center">
-          <p className="mb-3 text-sm font-semibold uppercase tracking-[0.25em] text-red-500">
+          <p className="mb-3 text-sm font-semibold uppercase tracking-[0.25em] text-red-700">
             New Arrivals
           </p>
 
@@ -223,8 +223,10 @@ const NewSarees = () => {
 
                         const discount = calculatedDiscount(price, finalPrice);
 
-                        const imageUrl = saree.images?.[0] || FALLBACK_IMAGE;
-
+                        const imageUrl = saree.images?.[0]
+                          ? cloudinaryImage(saree.images[0], 700)
+                          : FALLBACK_IMAGE;
+                          
                         return (
                           <div
                             key={saree._id}
@@ -273,7 +275,7 @@ const NewSarees = () => {
                                     top-3
                                     z-10
                                     rounded-full
-                                    bg-red-500
+                                    bg-red-700
                                     px-3
                                     py-1
                                     text-xs

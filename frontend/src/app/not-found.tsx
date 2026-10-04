@@ -15,11 +15,11 @@ const NotFound = () => {
         <div className="mb-8 flex justify-center">
           <Image
             src="/images/logo.webp"
-            width={72}
-            height={72}
+            width={96}
+            height={78}
             alt="MYSMME"
             priority
-            className="h-[72px] w-[72px] object-contain"
+            className="h-auto w-[72px] object-contain"
           />
         </div>
 

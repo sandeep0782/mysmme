@@ -1,5 +1,5 @@
 "use client";
-
+import { cloudinaryImage } from "@/lib/cloudinary";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -466,7 +466,7 @@ const SareeCard = ({ saree }: SareeCardProps) => {
                 >
                   <Badge
                     className="
-                      bg-red-600/90
+                      bg-red-700
                       text-white
                       hover:bg-red-700
                     "

@@ -222,8 +222,8 @@ export default function Header() {
           <Image
             src="/images/logo.webp"
             alt="Logo"
-            width={50}
-            height={50}
+            width={96}
+            height={78}
             className="h-10 w-auto"
           />
         </Link>
@@ -326,8 +326,8 @@ export default function Header() {
               <Image
                 src="/images/logo.webp"
                 alt="Logo"
-                width={150}
-                height={40}
+                width={96}
+                height={78}
                 className="h-8 w-auto object-contain"
               />
             </div>
@@ -339,8 +339,8 @@ export default function Header() {
           <Image
             src="/images/logo.webp"
             alt="Logo"
-            width={50}
-            height={50}
+            width={96}
+            height={78}
             className="h-8 w-auto object-contain"
           />
         </Link>
