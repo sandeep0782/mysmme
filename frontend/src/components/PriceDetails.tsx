@@ -1,15 +1,22 @@
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Shield, CreditCard, ChevronRight, ChevronLeft } from 'lucide-react';
+import { Shield, CreditCard, ChevronRight, ChevronLeft } from "lucide-react";
 
 interface PriceDetailsProps {
   totalOriginalPrice: number;
   totalDiscount: number;
+  couponDiscount: number;
   totalAmount: number;
   itemCount: number;
-  shippingCharge:number;
+  shippingCharge: number;
   isProcessing: boolean;
-  step: 'cart' | 'address' | 'payment';
+  step: "cart" | "address" | "payment";
   onProceed: () => void;
   onGoBack: () => void;
 }
@@ -18,6 +25,7 @@ export const PriceDetails: React.FC<PriceDetailsProps> = ({
   shippingCharge,
   totalOriginalPrice,
   totalDiscount,
+  couponDiscount,
   totalAmount,
   itemCount,
   isProcessing,
@@ -39,10 +47,23 @@ export const PriceDetails: React.FC<PriceDetailsProps> = ({
           <span>Discount</span>
           <span>- ₹{totalDiscount}</span>
         </div>
-        <div className='flex justify-between'>
-                    <span >Delivery Charge</span>
-                    <span className={`${shippingCharge === 0 ? 'text-green-600' : 'text-black'}`}>{shippingCharge === 0 ? 'Free' : `₹${shippingCharge}`}</span>
-                 </div>
+        <div className="flex justify-between">
+          <span>Delivery Charge</span>
+          <span
+            className={`${shippingCharge === 0 ? "text-green-600" : "text-black"}`}
+          >
+            {shippingCharge === 0 ? "Free" : `₹${shippingCharge}`}
+          </span>
+        </div>
+        {couponDiscount > 0 && (
+          <div className="flex items-center justify-between">
+            <span className="text-gray-600">Coupon Discount</span>
+
+            <span className="font-medium text-green-600">
+              -₹{couponDiscount.toLocaleString("en-IN")}
+            </span>
+          </div>
+        )}
         <div className="border-t pt-4 font-medium flex justify-between">
           <span>Total Amount</span>
           <span>₹{totalAmount}</span>
@@ -63,17 +84,13 @@ export const PriceDetails: React.FC<PriceDetailsProps> = ({
             </>
           ) : (
             <>
-              <ChevronRight className="h-4 w-4 mr-2" /> 
-              {step === 'cart' ? 'Proceed to Checkout' : 'Proceed to Payment'}
+              <ChevronRight className="h-4 w-4 mr-2" />
+              {step === "cart" ? "Proceed to Checkout" : "Proceed to Payment"}
             </>
           )}
         </Button>
         {step !== "cart" && (
-          <Button
-            variant="outline"
-            className="w-full"
-            onClick={onGoBack}
-          >
+          <Button variant="outline" className="w-full" onClick={onGoBack}>
             <ChevronLeft className="h-4 w-4 mr-2" /> Go Back
           </Button>
         )}

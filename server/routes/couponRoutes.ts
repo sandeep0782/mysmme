@@ -12,7 +12,7 @@ import { authenticateUser } from "../middleware/authMiddleware";
 
 const router = Router();
 
-router.post("/validate", validateCouponController);
+router.post("/validate", authenticateUser, validateCouponController);
 router.get("/my-coupon", authenticateUser, getMyCouponController);
 router.get("/admin", authenticateUser, getCouponsController);
 router.post("/admin", authenticateUser, createCouponController);

@@ -5,100 +5,44 @@ import Razorpay from "razorpay";
 import dotenv from "dotenv";
 import { response } from "../utils/responseHandler";
 import crypto from "crypto";
-dotenv.config();
 import PDFDocument from "pdfkit";
-
 import SellerOrder from "../models/SellerOrder";
+import { validateCoupon } from "../services/couponService";
+
+dotenv.config();
 
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID as string,
   key_secret: process.env.RAZORPAY_KEY_SECRET as string,
 });
 
-// export const createOrUpdateOrder = async (req: Request, res: Response) => {
-//   try {
-//     const userId = req?.id;
-//     const { orderId, shippingAddress, paymentMethod, paymentDetails } =
-//       req.body;
-
-//     // Fetch cart with populated products
-//     const cart = await Cart.findOne({ user: userId })
-//       .populate("items.product")
-//       .lean();
-//     if (!cart || cart.items.length === 0) {
-//       return response(res, 400, "Cart is empty");
-//     }
-
-//     // 1️⃣ Calculate total amount from cart
-//     const totalItemsAmount = cart.items.reduce(
-//       (acc, item) => acc + (item.product as any).finalPrice * item.quantity,
-//       0,
-//     );
-
-//     const shippingCharges = cart.items.map((item) => {
-//       const charge = (item.product as any)?.shippingCharge;
-//       if (!charge) return 0;
-//       if (typeof charge === "string") {
-//         return charge.toLowerCase() === "free" ? 0 : Number(charge) || 0;
-//       }
-//       if (typeof charge === "number") return charge;
-//       return 0;
-//     });
-
-//     const maximumShippingCharge = Math.max(0, ...shippingCharges);
-//     const totalAmount = totalItemsAmount + maximumShippingCharge;
-
-//     // 2️⃣ Find existing order or create a new one
-//     let order = await Order.findOne({ _id: orderId });
-
-//     if (order) {
-//       // Update existing order
-//       order.shippingAddress = shippingAddress || order.shippingAddress;
-//       order.paymentMethod = paymentMethod || order.paymentMethod;
-//       order.totalAmount = totalAmount; // ✅ use calculated total
-//       if (paymentDetails) {
-//         order.paymentDetails = paymentDetails;
-//         order.paymentStatus = "completed";
-//         order.status = "processing";
-//       }
-//     } else {
-//       // Create new order
-//       order = new Order({
-//         user: userId,
-//         items: cart.items,
-//         totalAmount, // ✅ calculated total
-//         shippingAddress,
-//         paymentMethod,
-//         paymentDetails,
-//         paymentStatus: paymentDetails ? "completed" : "pending",
-//       });
-//     }
-
-//     await order.save();
-
-//     // Clear cart if payment is done
-//     if (paymentDetails) {
-//       await Cart.findOneAndUpdate({ user: userId }, { $set: { items: [] } });
-//     }
-
-//     response(res, 201, "Order created/updated successfully", order);
-//   } catch (error) {
-//     console.error(error);
-//     response(res, 500, "Error creating/updating order", error);
-//   }
-// };
+// ============================================================
+// CREATE / UPDATE ORDER
+// ============================================================
 
 export const createOrUpdateOrder = async (req: Request, res: Response) => {
   try {
     const userId = req?.id;
 
-    const { orderId, shippingAddress, paymentMethod, paymentDetails } =
-      req.body;
+    if (!userId) {
+      return response(res, 401, "Unauthorized");
+    }
 
-    // -----------------------------------------
-    // 1. Get cart
-    // -----------------------------------------
-    const cart = await Cart.findOne({ user: userId })
+    const {
+      orderId,
+      shippingAddress,
+      paymentMethod,
+      paymentDetails,
+      couponCode,
+    } = req.body;
+
+    // ==========================================================
+    // 1. GET CART
+    // ==========================================================
+
+    const cart = await Cart.findOne({
+      user: userId,
+    })
       .populate("items.product")
       .lean();
 
@@ -106,9 +50,10 @@ export const createOrUpdateOrder = async (req: Request, res: Response) => {
       return response(res, 400, "Cart is empty");
     }
 
-    // -----------------------------------------
-    // 2. Validate cart products
-    // -----------------------------------------
+    // ==========================================================
+    // 2. VALIDATE PRODUCTS
+    // ==========================================================
+
     for (const item of cart.items) {
       if (!item.product) {
         return response(
@@ -119,9 +64,10 @@ export const createOrUpdateOrder = async (req: Request, res: Response) => {
       }
     }
 
-    // -----------------------------------------
-    // 3. Calculate item total
-    // -----------------------------------------
+    // ==========================================================
+    // 3. CALCULATE PRODUCT SUBTOTAL
+    // ==========================================================
+
     const totalItemsAmount = cart.items.reduce((acc, item) => {
       const product = item.product as any;
 
@@ -131,26 +77,40 @@ export const createOrUpdateOrder = async (req: Request, res: Response) => {
         throw new Error(`Invalid price for product ${product._id}`);
       }
 
-      return acc + unitPrice * item.quantity;
+      const quantity = Number(item.quantity);
+
+      if (!Number.isFinite(quantity) || quantity <= 0) {
+        throw new Error(`Invalid quantity for product ${product._id}`);
+      }
+
+      return acc + unitPrice * quantity;
     }, 0);
 
-    // -----------------------------------------
-    // 4. Calculate shipping
-    // -----------------------------------------
+    // ==========================================================
+    // 4. CALCULATE SHIPPING
+    // ==========================================================
+
     const shippingCharges = cart.items.map((item) => {
       const product = item.product as any;
+
       const charge = product?.shippingCharge;
 
-      if (!charge) {
+      if (charge === undefined || charge === null || charge === "") {
         return 0;
       }
 
       if (typeof charge === "string") {
-        return charge.toLowerCase() === "free" ? 0 : Number(charge) || 0;
+        if (charge.trim().toLowerCase() === "free") {
+          return 0;
+        }
+
+        const parsed = Number(charge);
+
+        return Number.isFinite(parsed) ? parsed : 0;
       }
 
       if (typeof charge === "number") {
-        return charge;
+        return Number.isFinite(charge) ? charge : 0;
       }
 
       return 0;
@@ -158,71 +118,230 @@ export const createOrUpdateOrder = async (req: Request, res: Response) => {
 
     const maximumShippingCharge = Math.max(0, ...shippingCharges);
 
-    const totalAmount = totalItemsAmount + maximumShippingCharge;
+    // ==========================================================
+    // 5. FIND EXISTING ORDER
+    // ==========================================================
 
-    // -----------------------------------------
-    // 5. Create proper Order items
-    // -----------------------------------------
+    let order = null;
+
+    if (orderId) {
+      order = await Order.findOne({
+        _id: orderId,
+        user: userId,
+      });
+
+      if (!order) {
+        return response(res, 404, "Order not found");
+      }
+    }
+
+    // ==========================================================
+    // 6. DETERMINE COUPON
+    // ==========================================================
+
+    let couponDiscount = 0;
+
+    let validatedCouponCode: string | undefined;
+
+    /*
+     * First request:
+     * frontend sends couponCode.
+     *
+     * Later address/payment requests:
+     * preserve coupon already saved on order.
+     */
+    const effectiveCouponCode =
+      typeof couponCode === "string" && couponCode.trim()
+        ? couponCode.trim().toUpperCase()
+        : order?.couponCode || undefined;
+
+    // ==========================================================
+    // 7. VALIDATE COUPON SERVER-SIDE
+    // ==========================================================
+
+    if (effectiveCouponCode) {
+      /*
+       * Count previous successful orders.
+       * Useful for firstOrderOnly coupons.
+       */
+      const completedOrderFilter: Record<string, any> = {
+        user: userId,
+        paymentStatus: "completed",
+      };
+
+      /*
+       * Do not count current order
+       * if we're updating it.
+       */
+      if (orderId) {
+        completedOrderFilter._id = {
+          $ne: orderId,
+        };
+      }
+
+      const userOrderCount = await Order.countDocuments(completedOrderFilter);
+
+      /*
+       * Important:
+       * backend passes its own calculated subtotal.
+       * Do not trust frontend cart total here.
+       */
+      const couponResult = await validateCoupon({
+        code: effectiveCouponCode,
+
+        cartTotal: totalItemsAmount,
+
+        userId: userId.toString(),
+
+        userOrderCount,
+      });
+
+      if (!couponResult.valid) {
+        return res.status(400).json({
+          success: false,
+
+          message: couponResult.message || "Coupon is no longer valid.",
+        });
+      }
+
+      const calculatedDiscount = Number(couponResult.discountAmount ?? 0);
+
+      if (!Number.isFinite(calculatedDiscount) || calculatedDiscount < 0) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid coupon discount amount.",
+        });
+      }
+
+      /*
+       * Never allow coupon discount
+       * to exceed the product subtotal.
+       */
+      couponDiscount = Math.min(calculatedDiscount, totalItemsAmount);
+
+      validatedCouponCode = couponResult.couponCode || effectiveCouponCode;
+    }
+
+    // ==========================================================
+    // 8. CALCULATE FINAL AMOUNT
+    // ==========================================================
+
+    /*
+     * FINAL FORMULA:
+     *
+     * subtotal
+     * - coupon discount
+     * + shipping
+     */
+
+    const totalAmount =
+      Math.max(0, totalItemsAmount - couponDiscount) + maximumShippingCharge;
+
+    console.log("========================================");
+
+    console.log("ORDER PRICE CALCULATION");
+
+    console.log({
+      subtotal: totalItemsAmount,
+
+      couponCode: validatedCouponCode,
+
+      couponDiscount,
+
+      shippingCharge: maximumShippingCharge,
+
+      totalAmount,
+    });
+
+    console.log("========================================");
+
+    // ==========================================================
+    // 9. BUILD ORDER ITEMS
+    // ==========================================================
+
     const orderItems = cart.items.map((item: any) => {
       const product = item.product;
 
       const unitPrice = Number(product.finalPrice);
-      const totalPrice = unitPrice * item.quantity;
 
-      // IMPORTANT:
-      // product.seller must be a real User ObjectId
+      const quantity = Number(item.quantity);
+
+      const totalPrice = unitPrice * quantity;
+
       if (!product.seller) {
         throw new Error(`Product "${product.title}" does not have a seller`);
       }
 
       return {
         product: product._id,
+
         productName: product.title,
+
         seller: product.seller,
-        quantity: item.quantity,
+
+        quantity,
+
         unitPrice,
+
         totalPrice,
       };
     });
 
-    // -----------------------------------------
-    // 6. Find existing order
-    // -----------------------------------------
-    let order = null;
+    // ==========================================================
+    // 10. UPDATE EXISTING ORDER
+    // ==========================================================
 
-    if (orderId) {
-      order = await Order.findById(orderId);
-    }
-
-    // -----------------------------------------
-    // 7. Update existing order
-    // -----------------------------------------
     if (order) {
       order.items = orderItems;
 
-      order.shippingAddress = shippingAddress || order.shippingAddress;
+      order.subtotal = totalItemsAmount;
 
-      order.paymentMethod = paymentMethod || order.paymentMethod;
+      order.shippingCharge = maximumShippingCharge;
+
+      order.couponCode = validatedCouponCode;
+
+      order.couponDiscount = couponDiscount;
 
       order.totalAmount = totalAmount;
 
+      if (shippingAddress) {
+        order.shippingAddress = shippingAddress;
+      }
+
+      if (paymentMethod) {
+        order.paymentMethod = paymentMethod;
+      }
+
       if (paymentDetails) {
-        order.paymentDetails = paymentDetails;
+        order.paymentDetails = {
+          ...order.paymentDetails,
+          ...paymentDetails,
+        };
+
         order.paymentStatus = "completed";
+
         order.status = "processing";
       }
 
       await order.save();
     }
 
-    // -----------------------------------------
-    // 8. Create new order
-    // -----------------------------------------
+    // ==========================================================
+    // 11. CREATE NEW ORDER
+    // ==========================================================
     else {
       order = new Order({
         user: userId,
 
         items: orderItems,
+
+        subtotal: totalItemsAmount,
+
+        shippingCharge: maximumShippingCharge,
+
+        couponCode: validatedCouponCode,
+
+        couponDiscount,
 
         totalAmount,
 
@@ -233,36 +352,24 @@ export const createOrUpdateOrder = async (req: Request, res: Response) => {
         paymentDetails,
 
         paymentStatus: paymentDetails ? "completed" : "pending",
+
+        status: "processing",
       });
 
       await order.save();
     }
 
-    // =========================================================
-    // 9. CREATE SELLER ORDERS
-    // =========================================================
-    //
-    // Only create SellerOrders after payment is completed.
-    //
-    // Example:
-    //
-    // Product A -> seller X
-    // Product B -> seller X
-    // Product C -> seller Y
-    //
-    // Result:
-    //
-    // SellerOrder #1 -> seller X -> A + B
-    // SellerOrder #2 -> seller Y -> C
-    //
-    // =========================================================
+    // ==========================================================
+    // 12. CREATE SELLER ORDERS AFTER PAYMENT
+    // ==========================================================
 
     if (paymentDetails) {
       const sellerGroups = new Map<string, any[]>();
 
-      // -----------------------------------------
-      // Group order items by seller
-      // -----------------------------------------
+      // --------------------------------------------------------
+      // Group items by seller
+      // --------------------------------------------------------
+
       for (const item of orderItems) {
         const sellerId = item.seller?.toString();
 
@@ -279,82 +386,74 @@ export const createOrUpdateOrder = async (req: Request, res: Response) => {
         sellerGroups.get(sellerId)!.push(item);
       }
 
-      // -----------------------------------------
-      // Create one SellerOrder per seller
-      // -----------------------------------------
+      // --------------------------------------------------------
+      // Create/update SellerOrder
+      // --------------------------------------------------------
+
       for (const [sellerId, sellerItems] of sellerGroups.entries()) {
-        const sellerOrderItems = sellerItems.map((item) => {
-          // Find original product from cart
-          const cartItem = cart.items.find(
-            (cartItem: any) =>
-              cartItem.product?._id?.toString() === item.product.toString(),
-          );
-
-          const product = cartItem?.product as any;
-
-          return {
-            product: item.product,
-            quantity: item.quantity,
-            productName: item.productName,
-            productImage: product?.images?.[0],
-            unitPrice: item.unitPrice,
-            totalPrice: item.totalPrice,
-          };
-        });
-
-        // -----------------------------------------
-        // Calculate seller total
-        // -----------------------------------------
-        const sellerTotalAmount = sellerOrderItems.reduce(
-          (sum, item) => sum + item.totalPrice,
+        const sellerTotal = sellerItems.reduce(
+          (acc: number, item: any) => acc + Number(item.totalPrice),
           0,
         );
 
-        // -----------------------------------------
-        // Create / update SellerOrder
-        // -----------------------------------------
-        const sellerOrder = await SellerOrder.findOneAndUpdate(
-          {
-            order: order._id,
-            seller: sellerId,
-          },
-          {
-            $set: {
-              order: order._id,
-              seller: sellerId,
-              items: sellerOrderItems,
-              totalAmount: sellerTotalAmount,
-              paymentStatus: order.paymentStatus,
-              paymentMethod: order.paymentMethod || "N/A",
-            },
-            $setOnInsert: {
-              status: "pending",
-            },
-          },
-          {
-            upsert: true,
-            returnDocument: "after",
-            setDefaultsOnInsert: true,
-          },
-        );
+        /*
+         * Your SellerOrder schema uses:
+         *
+         * order
+         * seller
+         * items
+         * totalAmount
+         * paymentStatus
+         * status
+         *
+         * NOT parentOrder.
+         */
 
-        console.log(
-          "✅ SellerOrder created/updated:",
-          sellerOrder?._id,
-          "Seller:",
-          sellerId,
-          "Amount:",
-          sellerTotalAmount,
-        );
+        const existingSellerOrder = await SellerOrder.findOne({
+          order: order._id,
+
+          seller: sellerId,
+        });
+
+        if (existingSellerOrder) {
+          existingSellerOrder.items = sellerItems;
+
+          existingSellerOrder.totalAmount = sellerTotal;
+
+          existingSellerOrder.paymentStatus = "completed";
+
+          if (existingSellerOrder.status === "pending") {
+            existingSellerOrder.status = "processing";
+          }
+
+          await existingSellerOrder.save();
+        } else {
+          await SellerOrder.create({
+            order: order._id,
+
+            seller: sellerId,
+
+            items: sellerItems,
+
+            totalAmount: sellerTotal,
+
+            paymentStatus: "completed",
+
+            status: "processing",
+          });
+        }
       }
     }
 
-    // -----------------------------------------
-    // 10. Clear cart after successful payment
-    // -----------------------------------------
+    // ==========================================================
+    // 13. CLEAR CART AFTER PAYMENT COMPLETION
+    // ==========================================================
+
     if (paymentDetails) {
       await Cart.findOneAndUpdate(
-        { user: userId },
+        {
+          user: userId,
+        },
         {
           $set: {
             items: [],
@@ -363,9 +462,10 @@ export const createOrUpdateOrder = async (req: Request, res: Response) => {
       );
     }
 
-    // -----------------------------------------
-    // 11. Success response
-    // -----------------------------------------
+    // ==========================================================
+    // 14. RESPONSE
+    // ==========================================================
+
     return response(res, 201, "Order created/updated successfully", order);
   } catch (error) {
     console.error("❌ createOrUpdateOrder ERROR:", error);
@@ -374,6 +474,10 @@ export const createOrUpdateOrder = async (req: Request, res: Response) => {
   }
 };
 
+// ============================================================
+// GET ORDER BY ID
+// ============================================================
+
 export const getOrderById = async (req: Request, res: Response) => {
   try {
     const order = await Order.findById(req.params.id)
@@ -381,33 +485,51 @@ export const getOrderById = async (req: Request, res: Response) => {
       .populate("shippingAddress")
       .populate({
         path: "items.product",
+
         model: "Product",
       });
+
     if (!order) {
       return response(res, 404, "Order not found");
     }
+
     response(res, 200, "Order fetched successfully", order);
   } catch (error) {
     response(res, 500, "Error fetching order");
   }
 };
 
+// ============================================================
+// GET USER ORDERS
+// ============================================================
+
 export const getUserOrders = async (req: Request, res: Response) => {
   try {
     const userId = req?.id;
-    const orders = await Order.find({ user: userId })
-      .sort({ createdAt: -1 })
+
+    const orders = await Order.find({
+      user: userId,
+    })
+      .sort({
+        createdAt: -1,
+      })
       .populate("user", "name email")
       .populate("shippingAddress")
       .populate({
         path: "items.product",
+
         model: "Product",
       });
+
     response(res, 200, "Orders fetched successfully", orders);
   } catch (error) {
     response(res, 500, "Error fetching orders");
   }
 };
+
+// ============================================================
+// CREATE RAZORPAY ORDER
+// ============================================================
 
 export const createPaymentWithRazorpay = async (
   req: Request,
@@ -415,7 +537,18 @@ export const createPaymentWithRazorpay = async (
 ) => {
   try {
     const { orderId } = req.body;
-    const order = await Order.findById(orderId);
+
+    const userId = req?.id;
+
+    if (!userId) {
+      return response(res, 401, "Unauthorized");
+    }
+
+    const order = await Order.findOne({
+      _id: orderId,
+      user: userId,
+    });
+
     if (!order) {
       return response(res, 404, "Order not found");
     }
@@ -424,22 +557,85 @@ export const createPaymentWithRazorpay = async (
       return response(res, 400, "Order is already paid");
     }
 
+    if (!Number.isFinite(order.totalAmount) || order.totalAmount <= 0) {
+      return response(res, 400, "Invalid order amount");
+    }
+
+    /*
+     * order.totalAmount already equals:
+     *
+     * subtotal
+     * - couponDiscount
+     * + shippingCharge
+     */
+
+    console.log("RAZORPAY PAYMENT AMOUNT:", {
+      orderId: order._id,
+
+      subtotal: order.subtotal,
+
+      couponCode: order.couponCode,
+
+      couponDiscount: order.couponDiscount,
+
+      shippingCharge: order.shippingCharge,
+
+      totalAmount: order.totalAmount,
+
+      amountInPaise: Math.round(order.totalAmount * 100),
+    });
+
     const razorpayOrder = await razorpay.orders.create({
       amount: Math.round(order.totalAmount * 100),
+
       currency: "INR",
+
       receipt: order._id.toString(),
+
+      notes: {
+        mysmmeOrderId: order._id.toString(),
+
+        couponCode: order.couponCode || "",
+      },
     });
+
     order.paymentDetails = {
       ...order.paymentDetails,
+
       razorpay_order_id: razorpayOrder.id,
     };
 
-    response(res, 200, "Razorpay order created", { order: razorpayOrder });
+    /*
+     * Your old function assigned the ID
+     * but did not save it before responding.
+     */
+    await order.save();
+
+    return response(res, 200, "Razorpay order created", {
+      order: razorpayOrder,
+
+      priceBreakdown: {
+        subtotal: order.subtotal,
+
+        couponCode: order.couponCode,
+
+        couponDiscount: order.couponDiscount,
+
+        shippingCharge: order.shippingCharge,
+
+        totalAmount: order.totalAmount,
+      },
+    });
   } catch (error) {
     console.error("Error creating Razorpay order:", error);
-    response(res, 500, "Error creating Razorpay order");
+
+    return response(res, 500, "Error creating Razorpay order");
   }
 };
+
+// ============================================================
+// RAZORPAY WEBHOOK
+// ============================================================
 
 export const handleRazorpayWebhook = async (
   req: Request,
@@ -450,7 +646,9 @@ export const handleRazorpayWebhook = async (
 
     if (!secret) {
       console.error("RAZORPAY_WEBHOOK_SECRET is not configured");
+
       response(res, 500, "Webhook configuration error");
+
       return;
     }
 
@@ -458,14 +656,21 @@ export const handleRazorpayWebhook = async (
 
     if (!signature || typeof signature !== "string") {
       response(res, 400, "Missing Razorpay signature");
+
       return;
     }
 
-    const rawBody = (req as Request & { rawBody?: Buffer }).rawBody;
+    const rawBody = (
+      req as Request & {
+        rawBody?: Buffer;
+      }
+    ).rawBody;
 
     if (!rawBody) {
       console.error("Razorpay webhook raw body is missing");
+
       response(res, 400, "Invalid webhook payload");
+
       return;
     }
 
@@ -476,12 +681,17 @@ export const handleRazorpayWebhook = async (
 
     if (expectedSignature !== signature) {
       response(res, 400, "Invalid signature");
+
       return;
     }
 
-    // Only captured payments should complete an order
+    /*
+     * Only captured payments
+     * should complete an order.
+     */
     if (req.body.event !== "payment.captured") {
       response(res, 200, "Webhook event ignored");
+
       return;
     }
 
@@ -489,19 +699,23 @@ export const handleRazorpayWebhook = async (
 
     if (!payment?.id || !payment?.order_id) {
       response(res, 400, "Invalid payment payload");
+
       return;
     }
 
     const paymentId = payment.id;
-    const orderId = payment.order_id;
+
+    const razorpayOrderId = payment.order_id;
 
     const order = await Order.findOneAndUpdate(
       {
-        "paymentDetails.razorpay_order_id": orderId,
+        "paymentDetails.razorpay_order_id": razorpayOrderId,
       },
       {
         paymentStatus: "completed",
+
         status: "processing",
+
         "paymentDetails.razorpay_payment_id": paymentId,
       },
       {
@@ -510,22 +724,31 @@ export const handleRazorpayWebhook = async (
     );
 
     if (!order) {
-      console.error(`Razorpay webhook: MYSMME order not found for ${orderId}`);
+      console.error(
+        `Razorpay webhook: MYSMME order not found for ${razorpayOrderId}`,
+      );
 
       response(res, 200, "Order not found");
+
       return;
     }
 
     console.log(
-      `Razorpay payment captured: order=${orderId}, payment=${paymentId}`,
+      `Razorpay payment captured: order=${razorpayOrderId}, payment=${paymentId}`,
     );
 
     response(res, 200, "Webhook processed successfully");
   } catch (error) {
     console.error("Razorpay webhook error:", error);
+
     response(res, 500, "Webhook processing failed");
   }
 };
+
+// ============================================================
+// DOWNLOAD INVOICE
+// Keep your existing invoice code below this point.
+// ============================================================
 
 export const downloadInvoice = async (
   req: Request,
