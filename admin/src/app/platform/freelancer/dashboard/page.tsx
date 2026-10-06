@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import {
@@ -15,15 +15,104 @@ import {
   Upload,
   Video,
 } from "lucide-react";
+
 import { useGetMyCampaignsQuery } from "@/store/api/campaignApi";
 import { useGetMyReelsQuery } from "@/store/api/reelApi";
 
+/* =========================================================
+   API URL
+========================================================= */
+
+const getApiUrl = () => {
+  const rawUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+
+  const cleanUrl = rawUrl.replace(/\/$/, "");
+
+  // Prevent /api/api problem.
+  return cleanUrl.endsWith("/api") ? cleanUrl : `${cleanUrl}/api`;
+};
+
+const API_URL = getApiUrl();
+
+/* =========================================================
+   TYPES
+========================================================= */
+
+interface CreatorUser {
+  _id?: string;
+  name?: string;
+  email?: string;
+  phoneNumber?: string;
+  profilePicture?: string;
+  role?: string;
+  isVerified?: boolean;
+}
+
+interface CreatorProfile {
+  _id?: string;
+
+  user?: CreatorUser | string;
+
+  bio?: string;
+
+  location?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+
+  category?: string;
+  categories?: string[];
+
+  languages?: string[];
+
+  instagramUsername?: string;
+
+  instagramConnected?: boolean;
+
+  followersCount?: number;
+  mediaCount?: number;
+  avgReelViews?: number;
+  avgLikes?: number;
+  avgComments?: number;
+  engagementRate?: number;
+  reelsLast30Days?: number;
+
+  creatorScore?: number;
+
+  creatorTier?: "Elite" | "A" | "B" | "C" | "Review";
+
+  isApproved?: boolean;
+
+  lastInstagramSyncAt?: string | null;
+}
+
+interface ApiResponse<T> {
+  success?: boolean;
+  message?: string;
+  data?: T;
+}
+
+/* =========================================================
+   PAGE
+========================================================= */
+
 const FreelancerDashboard = () => {
   const router = useRouter();
+
+  /* =====================================================
+     CAMPAIGNS
+  ===================================================== */
+
   const { data, isLoading } = useGetMyCampaignsQuery();
+
   const campaignCount = data?.length || 0;
 
+  /* =====================================================
+     REELS
+  ===================================================== */
+
   const { data: reels = [], isLoading: reelsLoading } = useGetMyReelsQuery();
+
   const reelCount = reels.length;
 
   const pendingReviewCount = reels.filter(
@@ -34,16 +123,290 @@ const FreelancerDashboard = () => {
     (reel) => reel.status === "approved",
   ).length;
 
+  /* =====================================================
+     CREATOR PROFILE
+  ===================================================== */
+
+  const [creatorProfile, setCreatorProfile] = useState<CreatorProfile | null>(
+    null,
+  );
+
+  const [profileLoading, setProfileLoading] = useState(true);
+
+  const [profileFetched, setProfileFetched] = useState(false);
+
+  const [profileError, setProfileError] = useState("");
+
+  /* =====================================================
+     FETCH PROFILE
+  ===================================================== */
+
+  useEffect(() => {
+    let mounted = true;
+
+    const fetchCreatorProfile = async () => {
+      try {
+        setProfileLoading(true);
+        setProfileError("");
+
+        const profileUrl = `${API_URL}/freelancer/profile`;
+
+        console.log("CREATOR PROFILE URL:", profileUrl);
+
+        const res = await fetch(profileUrl, {
+          method: "GET",
+
+          credentials: "include",
+
+          headers: {
+            Accept: "application/json",
+          },
+
+          cache: "no-store",
+        });
+
+        /*
+         * No CreatorProfile means the freelancer
+         * must complete/create the profile.
+         */
+        if (res.status === 404) {
+          if (mounted) {
+            setCreatorProfile(null);
+            setProfileFetched(true);
+          }
+
+          return;
+        }
+
+        const text = await res.text();
+
+        let result: ApiResponse<CreatorProfile> | CreatorProfile | null = null;
+
+        try {
+          result = text ? JSON.parse(text) : null;
+        } catch {
+          if (mounted) {
+            setProfileError(
+              `Server returned invalid response. Status: ${res.status}`,
+            );
+          }
+
+          return;
+        }
+
+        if (!res.ok) {
+          const apiResult = result as ApiResponse<CreatorProfile>;
+
+          if (mounted) {
+            setProfileError(
+              apiResult?.message ||
+                `Unable to load creator profile. Status: ${res.status}`,
+            );
+          }
+
+          return;
+        }
+
+        /*
+         * Supports both:
+         *
+         * {
+         *   success: true,
+         *   data: {...}
+         * }
+         *
+         * OR directly:
+         *
+         * {...}
+         */
+
+        const profile =
+          result && typeof result === "object" && "data" in result
+            ? (result as ApiResponse<CreatorProfile>).data
+            : (result as CreatorProfile);
+
+        if (mounted) {
+          setCreatorProfile(profile || null);
+
+          setProfileFetched(true);
+        }
+      } catch (error) {
+        console.error("CREATOR PROFILE ERROR:", error);
+
+        if (mounted) {
+          setProfileError("Unable to load creator profile.");
+        }
+      } finally {
+        if (mounted) {
+          setProfileLoading(false);
+        }
+      }
+    };
+
+    fetchCreatorProfile();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  /* =====================================================
+     NORMALIZE PROFILE VALUES
+  ===================================================== */
+
+  const categories = useMemo(() => {
+    if (Array.isArray(creatorProfile?.categories)) {
+      return creatorProfile.categories;
+    }
+
+    if (creatorProfile?.category?.trim()) {
+      return [creatorProfile.category.trim()];
+    }
+
+    return [];
+  }, [creatorProfile]);
+
+  const languages = useMemo(() => {
+    return Array.isArray(creatorProfile?.languages)
+      ? creatorProfile.languages
+      : [];
+  }, [creatorProfile]);
+
+  const profileLocation = useMemo(() => {
+    if (creatorProfile?.location?.trim()) {
+      return creatorProfile.location.trim();
+    }
+
+    const parts = [creatorProfile?.city, creatorProfile?.state]
+      .filter(Boolean)
+      .map((item) => item?.trim())
+      .filter(Boolean);
+
+    return parts.join(", ");
+  }, [creatorProfile]);
+
+  /* =====================================================
+     PROFILE COMPLETION
+  ===================================================== */
+
+  const profileChecks = useMemo(
+    () => [
+      Boolean(creatorProfile?.bio?.trim()),
+
+      Boolean(profileLocation),
+
+      Boolean(creatorProfile?.country?.trim()),
+
+      categories.length > 0,
+
+      languages.length > 0,
+    ],
+    [creatorProfile, profileLocation, categories, languages],
+  );
+
+  const completedFields = profileChecks.filter(Boolean).length;
+
+  const profileCompletion =
+    profileChecks.length > 0
+      ? Math.round((completedFields / profileChecks.length) * 100)
+      : 0;
+
+  const profileComplete = profileCompletion === 100;
+
+  /* =====================================================
+     AUTO REDIRECT
+  ===================================================== */
+
+  useEffect(() => {
+    if (profileLoading) {
+      return;
+    }
+
+    /*
+     * Do not redirect because of an API/server error.
+     * Otherwise a temporary server error could trap
+     * the user on the profile page.
+     */
+    if (profileError) {
+      return;
+    }
+
+    if (!profileFetched) {
+      return;
+    }
+
+    if (!profileComplete) {
+      router.replace("/platform/freelancer/profile");
+    }
+  }, [profileLoading, profileFetched, profileComplete, profileError, router]);
+
+  /* =====================================================
+     CREATOR USER
+  ===================================================== */
+
+  const creatorUser =
+    creatorProfile?.user && typeof creatorProfile.user === "object"
+      ? creatorProfile.user
+      : null;
+
+  const creatorName = creatorUser?.name || "Creator";
+
+  const creatorInitial = creatorName.trim().charAt(0).toUpperCase() || "C";
+
+  /* =====================================================
+     PROFILE CHECK LOADING
+  ===================================================== */
+
+  if (profileLoading || (profileFetched && !profileComplete && !profileError)) {
+    return (
+      <div className="flex min-h-[600px] items-center justify-center">
+        <div className="text-center">
+          <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-violet-600" />
+
+          <p className="mt-4 text-sm font-medium text-slate-600">
+            Checking your creator profile...
+          </p>
+
+          <p className="mt-1 text-xs text-slate-400">
+            Incomplete profiles will be redirected automatically.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  /* =====================================================
+     PAGE
+  ===================================================== */
+
   return (
     <div className="min-h-full">
-      {/* =====================================================
-                CONTENT
-            ===================================================== */}
-
       <div className="mx-auto max-w-[1600px] p-5 sm:p-7 lg:p-8">
         {/* =================================================
-                    WELCOME
-                ================================================= */}
+            PROFILE API ERROR
+        ================================================= */}
+
+        {profileError && (
+          <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+            <p className="text-sm font-semibold text-amber-800">
+              Creator profile could not be checked
+            </p>
+
+            <p className="mt-1 text-xs text-amber-700">{profileError}</p>
+
+            <button
+              type="button"
+              onClick={() => router.push("/platform/freelancer/profile")}
+              className="mt-3 text-xs font-semibold text-amber-800 underline"
+            >
+              Open profile
+            </button>
+          </div>
+        )}
+
+        {/* =================================================
+            WELCOME
+        ================================================= */}
 
         <section className="mb-8">
           <div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-end">
@@ -75,7 +438,9 @@ const FreelancerDashboard = () => {
           </div>
         </section>
 
-        {/* STATS */}
+        {/* =================================================
+            STATS
+        ================================================= */}
 
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <StatCard
@@ -87,7 +452,7 @@ const FreelancerDashboard = () => {
 
           <StatCard
             label="Reels Submitted"
-            value={isLoading ? "..." : String(reelCount)}
+            value={reelsLoading ? "..." : String(reelCount)}
             icon={<Video size={20} />}
             color="blue"
           />
@@ -106,14 +471,15 @@ const FreelancerDashboard = () => {
             color="emerald"
           />
         </section>
+
         {/* =================================================
-                    MAIN GRID
-                ================================================= */}
+            MAIN GRID
+        ================================================= */}
 
         <div className="mt-6 grid gap-6 xl:grid-cols-[1.5fr_1fr]">
-          {/* =================================================
-                        ACTIVE CAMPAIGNS
-                    ================================================= */}
+          {/* ===============================================
+              CAMPAIGNS
+          =============================================== */}
 
           <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
             <div className="flex items-center justify-between gap-4">
@@ -136,6 +502,7 @@ const FreelancerDashboard = () => {
                 <ArrowRight size={15} />
               </button>
             </div>
+
             <div className="mt-5 rounded-xl border border-slate-200 bg-white p-5">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -166,15 +533,17 @@ const FreelancerDashboard = () => {
 
               <p className="mt-4 text-xs text-slate-500">
                 {campaignCount > 0
-                  ? `You have ${campaignCount} campaign${campaignCount === 1 ? "" : "s"} available to explore.`
+                  ? `You have ${campaignCount} campaign${
+                      campaignCount === 1 ? "" : "s"
+                    } available to explore.`
                   : "New campaigns will appear here when they're available for you."}
               </p>
             </div>
           </section>
 
-          {/* =================================================
-                        CREATOR PROFILE
-                    ================================================= */}
+          {/* ===============================================
+              CREATOR PROFILE
+          =============================================== */}
 
           <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
             <div className="flex items-center justify-between">
@@ -198,30 +567,47 @@ const FreelancerDashboard = () => {
             </div>
 
             <div className="mt-6 flex items-center gap-4">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 text-xl font-bold text-white">
-                F
-              </div>
+              {creatorUser?.profilePicture ? (
+                <img
+                  src={creatorUser.profilePicture}
+                  alt={creatorName}
+                  className="h-16 w-16 rounded-full object-cover"
+                />
+              ) : (
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 text-xl font-bold text-white">
+                  {creatorInitial}
+                </div>
+              )}
 
               <div>
-                <p className="font-semibold text-slate-900">
-                  Your Creator Profile
-                </p>
+                <p className="font-semibold text-slate-900">{creatorName}</p>
 
                 <p className="mt-1 text-sm text-slate-400">
-                  Complete your profile to get better campaigns.
+                  {profileComplete
+                    ? "Your creator profile is complete."
+                    : "Complete your profile to get better campaigns."}
                 </p>
               </div>
             </div>
+
+            {/* PROFILE COMPLETION */}
 
             <div className="mt-6">
               <div className="mb-2 flex justify-between text-xs">
                 <span className="text-slate-500">Profile completion</span>
 
-                <span className="font-semibold text-violet-600">20%</span>
+                <span className="font-semibold text-violet-600">
+                  {profileCompletion}%
+                </span>
               </div>
 
               <div className="h-2 overflow-hidden rounded-full bg-slate-100">
-                <div className="h-full w-[20%] rounded-full bg-violet-600" />
+                <div
+                  className="h-full rounded-full bg-violet-600 transition-all duration-500"
+                  style={{
+                    width: `${profileCompletion}%`,
+                  }}
+                />
               </div>
             </div>
 
@@ -230,18 +616,56 @@ const FreelancerDashboard = () => {
               onClick={() => router.push("/platform/freelancer/profile")}
               className="mt-5 flex w-full items-center justify-center gap-2 rounded-lg bg-slate-900 px-4 py-3 text-sm font-medium text-white transition hover:bg-slate-800"
             >
-              Complete Profile
+              {profileComplete ? "Edit Profile" : "Complete Profile"}
+
               <ArrowRight size={15} />
             </button>
+
+            {/* INSTAGRAM STATUS */}
+
+            {profileComplete && (
+              <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-semibold text-slate-700">
+                      Instagram
+                    </p>
+
+                    <p className="mt-1 text-xs text-slate-500">
+                      {creatorProfile?.instagramConnected
+                        ? "Instagram connected"
+                        : "Connect Instagram to sync creator performance."}
+                    </p>
+                  </div>
+
+                  {creatorProfile?.instagramConnected ? (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-1 text-[10px] font-semibold text-emerald-700">
+                      <CheckCircle2 size={11} />
+                      Connected
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => router.push("/platform/freelancer/social")}
+                      className="rounded-lg bg-violet-600 px-3 py-2 text-xs font-semibold text-white hover:bg-violet-700"
+                    >
+                      Connect
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
           </section>
         </div>
 
         {/* =================================================
-                    REELS + EARNINGS
-                ================================================= */}
+            REELS + EARNINGS
+        ================================================= */}
 
         <div className="mt-6 grid gap-6 lg:grid-cols-2">
-          {/* REELS */}
+          {/* ===============================================
+              REELS
+          =============================================== */}
 
           <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
             <div className="flex items-center justify-between">
@@ -270,71 +694,73 @@ const FreelancerDashboard = () => {
                 label="Submitted"
                 value={reelsLoading ? "..." : String(reelCount)}
               />
+
               <MiniStat
                 label="Approved"
                 value={reelsLoading ? "..." : String(approvedReelCount)}
               />
+
               <MiniStat label="Views" value="0" />
             </div>
 
-            <div className="mt-4 flex min-h-28 items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50">
-              <div className="mt-4">
-                {reelsLoading ? (
-                  <div className="flex min-h-28 items-center justify-center rounded-xl border border-slate-200 bg-slate-50">
-                    <p className="text-xs text-slate-400">Loading reels...</p>
-                  </div>
-                ) : reels.length > 0 ? (
-                  <div className="grid grid-cols-2 gap-3">
-                    {reels.slice(0, 4).map((reel) => (
-                      <button
-                        key={reel.id}
-                        type="button"
-                        onClick={() =>
-                          router.push(`/platform/freelancer/reels/${reel.id}`)
-                        }
-                        className="group relative aspect-video overflow-hidden rounded-xl bg-slate-100"
-                      >
-                        {reel.videoUrl ? (
-                          <video
-                            src={reel.videoUrl}
-                            className="h-full w-full object-cover"
-                            muted
-                            playsInline
-                          />
-                        ) : (
-                          <div className="flex h-full items-center justify-center">
-                            <Video size={20} className="text-slate-300" />
-                          </div>
-                        )}
-
-                        <div className="absolute inset-0 flex items-center justify-center bg-black/0 transition group-hover:bg-black/30">
-                          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white/90 opacity-0 shadow-sm transition group-hover:opacity-100">
-                            <Play
-                              size={15}
-                              className="ml-0.5 text-violet-600"
-                              fill="currentColor"
-                            />
-                          </div>
+            <div className="mt-4">
+              {reelsLoading ? (
+                <div className="flex min-h-28 items-center justify-center rounded-xl border border-slate-200 bg-slate-50">
+                  <p className="text-xs text-slate-400">Loading reels...</p>
+                </div>
+              ) : reels.length > 0 ? (
+                <div className="grid grid-cols-2 gap-3">
+                  {reels.slice(0, 4).map((reel) => (
+                    <button
+                      key={reel.id}
+                      type="button"
+                      onClick={() =>
+                        router.push(`/platform/freelancer/reels/${reel.id}`)
+                      }
+                      className="group relative aspect-video overflow-hidden rounded-xl bg-slate-100"
+                    >
+                      {reel.videoUrl ? (
+                        <video
+                          src={reel.videoUrl}
+                          className="h-full w-full object-cover"
+                          muted
+                          playsInline
+                        />
+                      ) : (
+                        <div className="flex h-full items-center justify-center">
+                          <Video size={20} className="text-slate-300" />
                         </div>
-                      </button>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="flex min-h-28 items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50">
-                    <div className="text-center">
-                      <Play size={20} className="mx-auto text-slate-300" />
+                      )}
 
-                      <p className="mt-2 text-xs text-slate-400">
-                        Your submitted reels will appear here.
-                      </p>
-                    </div>
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/0 transition group-hover:bg-black/30">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white/90 opacity-0 shadow-sm transition group-hover:opacity-100">
+                          <Play
+                            size={15}
+                            className="ml-0.5 text-violet-600"
+                            fill="currentColor"
+                          />
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex min-h-28 items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50">
+                  <div className="text-center">
+                    <Play size={20} className="mx-auto text-slate-300" />
+
+                    <p className="mt-2 text-xs text-slate-400">
+                      Your submitted reels will appear here.
+                    </p>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
           </section>
 
-          {/* EARNINGS */}
+          {/* ===============================================
+              EARNINGS
+          =============================================== */}
 
           <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
             <div className="flex items-center justify-between">
@@ -366,8 +792,8 @@ const FreelancerDashboard = () => {
         </div>
 
         {/* =================================================
-                    HOW IT WORKS
-                ================================================= */}
+            HOW IT WORKS
+        ================================================= */}
 
         <section className="mt-6 rounded-2xl border border-violet-100 bg-gradient-to-br from-violet-50 via-white to-fuchsia-50 p-6">
           <div className="max-w-2xl">
@@ -381,7 +807,7 @@ const FreelancerDashboard = () => {
 
             <p className="mt-2 text-sm leading-6 text-slate-500">
               Pick a campaign, create your reel, publish it on your social
-              accounts and submit the links to MySareeMe.
+              accounts and submit the links to MYSMME.
             </p>
           </div>
 
@@ -406,7 +832,9 @@ const FreelancerDashboard = () => {
           </div>
         </section>
 
-        {/* MOBILE QUICK LINK */}
+        {/* =================================================
+            MOBILE QUICK LINK
+        ================================================= */}
 
         <button
           type="button"
@@ -421,9 +849,9 @@ const FreelancerDashboard = () => {
   );
 };
 
-/* =============================================================
+/* =========================================================
    STAT CARD
-============================================================= */
+========================================================= */
 
 function StatCard({
   label,
@@ -441,14 +869,17 @@ function StatCard({
       bg: "bg-violet-50",
       text: "text-violet-600",
     },
+
     blue: {
       bg: "bg-blue-50",
       text: "text-blue-600",
     },
+
     amber: {
       bg: "bg-amber-50",
       text: "text-amber-600",
     },
+
     emerald: {
       bg: "bg-emerald-50",
       text: "text-emerald-600",
@@ -476,9 +907,9 @@ function StatCard({
   );
 }
 
-/* =============================================================
+/* =========================================================
    MINI STAT
-============================================================= */
+========================================================= */
 
 function MiniStat({ label, value }: { label: string; value: string }) {
   return (
@@ -490,9 +921,9 @@ function MiniStat({ label, value }: { label: string; value: string }) {
   );
 }
 
-/* =============================================================
+/* =========================================================
    STEP
-============================================================= */
+========================================================= */
 
 function Step({
   number,

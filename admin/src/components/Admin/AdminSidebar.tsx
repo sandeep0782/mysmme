@@ -188,10 +188,9 @@ const libraryItems: SidebarItem[] = [
   /* ==============================================================
      CUSTOMERS & SUPPORT
   ============================================================== */
-
   {
     icon: <Users className="h-5 w-5" />,
-    label: "Customers & Support",
+    label: "User",
 
     children: [
       {
@@ -200,6 +199,18 @@ const libraryItems: SidebarItem[] = [
         href: "/platform/admin/users",
       },
 
+      {
+        icon: <MessageSquareText className="h-4 w-4" />,
+        label: "Profile",
+        href: "/platform/admin/profile",
+      },
+    ],
+  },
+  {
+    icon: <Users className="h-5 w-5" />,
+    label: "Support",
+
+    children: [
       {
         icon: <MessageSquareText className="h-4 w-4" />,
         label: "Contact Enquiries",

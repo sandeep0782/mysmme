@@ -503,13 +503,54 @@ export const getOrderById = async (req: Request, res: Response) => {
 // GET USER ORDERS
 // ============================================================
 
+// export const getUserOrders = async (req: Request, res: Response) => {
+//   try {
+//     const userId = req?.id;
+
+//     const orders = await Order.find({
+
+//     })
+//       .sort({
+//         createdAt: -1,
+//       })
+//       .populate("user", "name email")
+//       .populate("shippingAddress")
+//       .populate({
+//         path: "items.product",
+
+//         model: "Product",
+//       });
+
+//     response(res, 200, "Orders fetched successfully", orders);
+//   } catch (error) {
+//     response(res, 500, "Error fetching orders");
+//   }
+// };
+
+// ============================================================
+// GET ORDERS
+// ADMIN  -> ALL ORDERS
+// OTHERS -> OWN ORDERS
+// ============================================================
+
 export const getUserOrders = async (req: Request, res: Response) => {
   try {
     const userId = req?.id;
 
-    const orders = await Order.find({
-      user: userId,
-    })
+    if (!userId) {
+      return response(res, 401, "Unauthorized");
+    }
+
+    const role = (req as any).user?.role || (req as any).role;
+
+    const filter =
+      role === "admin"
+        ? {}
+        : {
+            user: userId,
+          };
+
+    const orders = await Order.find(filter)
       .sort({
         createdAt: -1,
       })
@@ -517,16 +558,16 @@ export const getUserOrders = async (req: Request, res: Response) => {
       .populate("shippingAddress")
       .populate({
         path: "items.product",
-
         model: "Product",
       });
 
-    response(res, 200, "Orders fetched successfully", orders);
+    return response(res, 200, "Orders fetched successfully", orders);
   } catch (error) {
-    response(res, 500, "Error fetching orders");
+    console.error("GET ORDERS ERROR:", error);
+
+    return response(res, 500, "Error fetching orders");
   }
 };
-
 // ============================================================
 // CREATE RAZORPAY ORDER
 // ============================================================

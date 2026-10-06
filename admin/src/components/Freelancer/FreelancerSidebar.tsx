@@ -28,7 +28,7 @@ interface FreelancerSidebarProps {
 const navigation = [
   {
     label: "Dashboard",
-    href: "/platform/freelancer",
+    href: "/platform/freelancer/dashboard",
     icon: LayoutDashboard,
   },
   {

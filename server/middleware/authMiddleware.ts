@@ -1,36 +1,47 @@
-  import { Request, Response, NextFunction } from 'express';
-  import jwt from 'jsonwebtoken';
-  import { response } from '../utils/responseHandler';
+import { Request, Response, NextFunction } from "express";
+import jwt from "jsonwebtoken";
+import { response } from "../utils/responseHandler";
 
-  declare global {
-    namespace Express {
-      interface Request {
-        id: string;
-        role:string;
-      }
+declare global {
+  namespace Express {
+    interface Request {
+      id: string;
+      role: string;
     }
   }
+}
 
-  const authenticateUser = async (req: Request, res: Response, next: NextFunction) => {
-    const token = req.cookies.access_token;
-    
-    if (!token) {
-      return response(res, 401, 'Not authorized');
+const authenticateUser = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  const token = req.cookies.access_token;
+
+  if (!token) {
+    return response(res, 401, "Not authorized");
+  }
+
+  try {
+    const decoded = jwt.verify(
+      token,
+      process.env.JWT_SECRET as string,
+    ) as jwt.JwtPayload;
+
+    console.log("JWT DECODED:", decoded);
+    console.log("JWT USER ID:", decoded.userId);
+    console.log("JWT ROLE:", decoded.role);
+
+    if (!decoded) {
+      return response(res, 401, "Invalid authentication token");
     }
 
-    try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as jwt.JwtPayload;
+    req.id = decoded.userId as string;
+    req.role = decoded.role as string;
+    next();
+  } catch (error) {
+    return response(res, 401, "Not authorized, token failed");
+  }
+};
 
-      if (!decoded) {
-        return response(res, 401, 'Invalid authentication token');
-      }
-      
-      req.id = decoded.userId as string;
-      req.role= decoded.role as string;
-      next();
-    } catch (error) {
-      return response(res, 401, 'Not authorized, token failed');
-    }
-  };
-
-  export { authenticateUser };
+export { authenticateUser };

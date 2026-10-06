@@ -120,3 +120,30 @@ export const createOrUpdateAddressByUserId = async (
     return response(res, 500, "Error creating or updating address");
   }
 };
+
+export const getAddressByAdminUserId = async (req: Request, res: Response) => {
+  try {
+    const { userId } = req.params;
+
+    if (!userId) {
+      return response(res, 400, "User ID is required");
+    }
+
+    const user = await User.findById(userId).populate("addresses");
+
+    if (!user) {
+      return response(res, 404, "User not found");
+    }
+
+    return response(
+      res,
+      200,
+      "Addresses fetched successfully",
+      user.addresses || [],
+    );
+  } catch (error) {
+    console.error("Admin get address error:", error);
+
+    return response(res, 500, "Error fetching addresses");
+  }
+};

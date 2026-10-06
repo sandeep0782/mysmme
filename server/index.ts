@@ -36,6 +36,8 @@ import careerRoutes from "./routes/careerRoutes";
 import whatsappRoutes from "./routes/whatsappRoutes";
 import contactRoutes from "./routes/contactRoutes";
 import couponRoutes from "./routes/couponRoutes";
+import adminUserRoutes from "./routes/adminUserRoutes";
+import freelancerProfileRoutes from "./routes/freelancerProfileRoutes";
 
 // Load environment variables BEFORE importing/starting
 // anything that depends on process.env.
@@ -165,6 +167,8 @@ app.use("/api/careers", careerRoutes);
 app.use("/api/contact", contactRoutes);
 app.use("/api/whatsapp", whatsappRoutes);
 app.use("/api/coupons", couponRoutes);
+app.use("/api/admin/users", adminUserRoutes);
+app.use("/api/freelancer", freelancerProfileRoutes);
 
 // -----------------------------------------------------
 // Start server

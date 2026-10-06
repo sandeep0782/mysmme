@@ -1,11 +1,11 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+
 import { useRouter } from "next/navigation";
 
 import {
   ArrowLeft,
-  Camera,
   Check,
   CheckCircle2,
   ChevronDown,
@@ -17,29 +17,87 @@ import {
   Save,
   Sparkles,
   User,
-  Users,
   X,
 } from "lucide-react";
 
-import { FaInstagram, FaYoutube } from "react-icons/fa";
+import { FaInstagram } from "react-icons/fa";
+
+/* =========================================================
+   API URL
+========================================================= */
+
+const getApiUrl = () => {
+  const raw = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+
+  const clean = raw.replace(/\/$/, "");
+
+  return clean.endsWith("/api") ? clean : `${clean}/api`;
+};
+
+const API_URL = getApiUrl();
 
 /* =========================================================
    TYPES
 ========================================================= */
 
-type SocialPlatform = "Instagram" | "YouTube";
-
-interface SocialAccount {
-  platform: SocialPlatform;
-  username: string;
-  followers: number;
-  url: string;
-  connected: boolean;
+interface UserData {
+  _id?: string;
+  name?: string;
+  email?: string;
+  phoneNumber?: string;
+  profilePicture?: string;
+  role?: string;
+  isVerified?: boolean;
 }
 
-interface FreelancerProfile {
+interface CreatorProfileApi {
+  _id?: string;
+
+  user?: UserData | string;
+
+  bio?: string;
+  location?: string;
+  country?: string;
+
+  categories?: string[];
+  languages?: string[];
+
+  expectedPrice?: number;
+
+  instagramUsername?: string;
+  instagramUserId?: string;
+
+  followersCount?: number;
+  mediaCount?: number;
+
+  avgReelViews?: number;
+  avgLikes?: number;
+  avgComments?: number;
+  engagementRate?: number;
+
+  reelsLast30Days?: number;
+
+  creatorScore?: number;
+
+  creatorTier?: "Elite" | "A" | "B" | "C" | "Review";
+
+  instagramConnected?: boolean;
+
+  isApproved?: boolean;
+
+  lastInstagramSyncAt?: string | null;
+}
+
+interface ApiResponse<T> {
+  success?: boolean;
+  message?: string;
+  data?: T;
+}
+
+interface ProfileForm {
   firstName: string;
   lastName: string;
+
   email: string;
   phone: string;
 
@@ -49,70 +107,43 @@ interface FreelancerProfile {
   country: string;
 
   categories: string[];
-
   languages: string[];
 
-  socialAccounts: SocialAccount[];
+  expectedPrice: string;
+
+  instagramUsername: string;
 
   profileImage: string;
-
-  portfolio: string[];
 
   isVerified: boolean;
 }
 
 /* =========================================================
-   MOCK PROFILE
+   EMPTY PROFILE
 ========================================================= */
 
-const initialProfile: FreelancerProfile = {
-  firstName: "Krishna",
-  lastName: "Creator",
+const emptyProfile: ProfileForm = {
+  firstName: "",
+  lastName: "",
 
-  email: "creator@example.com",
+  email: "",
+  phone: "",
 
-  phone: "+91 98765 43210",
+  bio: "",
 
-  bio: "Fashion and lifestyle creator passionate about sarees, styling, beauty and authentic storytelling.",
-
-  location: "New Delhi",
-
+  location: "",
   country: "India",
 
-  categories: ["Fashion", "Saree Styling", "Lifestyle", "Beauty"],
+  categories: [],
+  languages: [],
 
-  languages: ["English", "Hindi"],
+  expectedPrice: "",
 
-  socialAccounts: [
-    {
-      platform: "Instagram",
-      username: "@mysmmecreator",
-      followers: 42500,
-      url: "https://instagram.com/mysmmecreator",
-      connected: true,
-    },
+  instagramUsername: "",
 
-    {
-      platform: "YouTube",
-      username: "MYSMME Creator",
-      followers: 18200,
-      url: "https://youtube.com",
-      connected: true,
-    },
-  ],
+  profileImage: "",
 
-  profileImage:
-    "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=500&q=80",
-
-  portfolio: [
-    "https://images.unsplash.com/photo-1594633312681-425c7b97ccd1?auto=format&fit=crop&w=600&q=80",
-
-    "https://images.unsplash.com/photo-1583391733956-6c78276477e2?auto=format&fit=crop&w=600&q=80",
-
-    "https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=600&q=80",
-  ],
-
-  isVerified: true,
+  isVerified: false,
 };
 
 /* =========================================================
@@ -152,25 +183,171 @@ const languageOptions = [
 export default function FreelancerProfilePage() {
   const router = useRouter();
 
-  const [profile, setProfile] = useState<FreelancerProfile>(initialProfile);
+  const [profile, setProfile] = useState<ProfileForm>(emptyProfile);
+
+  const [originalProfile, setOriginalProfile] =
+    useState<ProfileForm>(emptyProfile);
+
+  const [creatorData, setCreatorData] = useState<CreatorProfileApi | null>(
+    null,
+  );
+
+  const [loading, setLoading] = useState(true);
+
+  const [saving, setSaving] = useState(false);
 
   const [editing, setEditing] = useState(false);
 
-  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const [success, setSuccess] = useState("");
 
   const [showCategoryMenu, setShowCategoryMenu] = useState(false);
 
   const [showLanguageMenu, setShowLanguageMenu] = useState(false);
 
   /* =====================================================
-     FORM UPDATE
+     FETCH PROFILE
   ===================================================== */
 
-  const updateField = (field: keyof FreelancerProfile, value: string) => {
+  useEffect(() => {
+    let mounted = true;
+
+    const fetchProfile = async () => {
+      try {
+        setLoading(true);
+        setError("");
+
+        const url = `${API_URL}/freelancer/profile`;
+
+        console.log("GET FREELANCER PROFILE:", url);
+
+        const res = await fetch(url, {
+          method: "GET",
+
+          credentials: "include",
+
+          headers: {
+            Accept: "application/json",
+          },
+
+          cache: "no-store",
+        });
+
+        const text = await res.text();
+
+        let result: ApiResponse<CreatorProfileApi> | null = null;
+
+        try {
+          result = text ? JSON.parse(text) : null;
+        } catch {
+          throw new Error(`Invalid server response. Status: ${res.status}`);
+        }
+
+        if (!res.ok) {
+          throw new Error(result?.message || "Unable to load creator profile.");
+        }
+
+        const data = result?.data;
+
+        if (!data) {
+          throw new Error("Creator profile data not found.");
+        }
+
+        if (!mounted) return;
+
+        setCreatorData(data);
+
+        const user =
+          data.user && typeof data.user === "object" ? data.user : null;
+
+        const fullName = user?.name?.trim() || "";
+
+        const nameParts = fullName.split(/\s+/);
+
+        const firstName = nameParts[0] || "";
+
+        const lastName = nameParts.slice(1).join(" ");
+
+        const formatted: ProfileForm = {
+          firstName,
+
+          lastName,
+
+          email: user?.email || "",
+
+          phone: user?.phoneNumber || "",
+
+          bio: data.bio || "",
+
+          location: data.location || "",
+
+          country: data.country || "India",
+
+          categories: Array.isArray(data.categories) ? data.categories : [],
+
+          languages: Array.isArray(data.languages) ? data.languages : [],
+
+          expectedPrice:
+            data.expectedPrice != null ? String(data.expectedPrice) : "",
+
+          instagramUsername: data.instagramUsername || "",
+
+          profileImage: user?.profilePicture || "",
+
+          isVerified: Boolean(user?.isVerified),
+        };
+
+        setProfile(formatted);
+
+        setOriginalProfile(formatted);
+
+        /*
+         * Automatically open edit mode
+         * when required fields are incomplete.
+         */
+
+        const complete =
+          Boolean(formatted.bio.trim()) &&
+          Boolean(formatted.location.trim()) &&
+          Boolean(formatted.country.trim()) &&
+          formatted.categories.length > 0 &&
+          formatted.languages.length > 0;
+
+        if (!complete) {
+          setEditing(true);
+        }
+      } catch (err: any) {
+        console.error("GET PROFILE ERROR:", err);
+
+        if (mounted) {
+          setError(err?.message || "Unable to load profile.");
+        }
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchProfile();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  /* =====================================================
+     UPDATE FIELD
+  ===================================================== */
+
+  const updateField = (field: keyof ProfileForm, value: string) => {
     setProfile((previous) => ({
       ...previous,
       [field]: value,
     }));
+
+    setSuccess("");
   };
 
   /* =====================================================
@@ -183,11 +360,14 @@ export default function FreelancerProfilePage() {
 
       return {
         ...previous,
+
         categories: exists
           ? previous.categories.filter((item) => item !== category)
           : [...previous.categories, category],
       };
     });
+
+    setSuccess("");
   };
 
   /* =====================================================
@@ -200,11 +380,77 @@ export default function FreelancerProfilePage() {
 
       return {
         ...previous,
+
         languages: exists
           ? previous.languages.filter((item) => item !== language)
           : [...previous.languages, language],
       };
     });
+
+    setSuccess("");
+  };
+
+  /* =====================================================
+     COMPLETION
+  ===================================================== */
+
+  const completionChecks = useMemo(
+    () => [
+      Boolean(profile.bio.trim()),
+
+      Boolean(profile.location.trim()),
+
+      Boolean(profile.country.trim()),
+
+      profile.categories.length > 0,
+
+      profile.languages.length > 0,
+    ],
+    [profile],
+  );
+
+  const completedFields = completionChecks.filter(Boolean).length;
+
+  const profileCompletion = Math.round(
+    (completedFields / completionChecks.length) * 100,
+  );
+
+  const profileComplete = profileCompletion === 100;
+
+  /* =====================================================
+     VALIDATE
+  ===================================================== */
+
+  const validateProfile = () => {
+    if (!profile.bio.trim()) {
+      return "Please enter your creator bio.";
+    }
+
+    if (!profile.location.trim()) {
+      return "Please enter your city/location.";
+    }
+
+    if (!profile.country.trim()) {
+      return "Please enter your country.";
+    }
+
+    if (profile.categories.length === 0) {
+      return "Please select at least one content category.";
+    }
+
+    if (profile.languages.length === 0) {
+      return "Please select at least one language.";
+    }
+
+    if (
+      profile.expectedPrice &&
+      (Number.isNaN(Number(profile.expectedPrice)) ||
+        Number(profile.expectedPrice) < 0)
+    ) {
+      return "Expected price must be a valid amount.";
+    }
+
+    return "";
   };
 
   /* =====================================================
@@ -212,74 +458,160 @@ export default function FreelancerProfilePage() {
   ===================================================== */
 
   const handleSave = async () => {
-    setSaving(true);
+    const validationError = validateProfile();
+
+    if (validationError) {
+      setError(validationError);
+
+      return;
+    }
 
     try {
-      /*
-       * TODO:
-       * Replace this with your RTK Query mutation
-       * once the freelancer API is connected.
-       */
+      setSaving(true);
+      setError("");
+      setSuccess("");
 
-      await new Promise((resolve) => setTimeout(resolve, 800));
+      const url = `${API_URL}/freelancer/profile`;
+
+      console.log("PATCH FREELANCER PROFILE:", url);
+
+      const payload = {
+        bio: profile.bio.trim(),
+
+        location: profile.location.trim(),
+
+        country: profile.country.trim(),
+
+        categories: profile.categories,
+
+        languages: profile.languages,
+
+        instagramUsername: profile.instagramUsername.trim().replace(/^@/, ""),
+
+        expectedPrice: profile.expectedPrice
+          ? Number(profile.expectedPrice)
+          : 0,
+      };
+
+      console.log("PROFILE PAYLOAD:", payload);
+
+      const res = await fetch(url, {
+        method: "PATCH",
+
+        credentials: "include",
+
+        headers: {
+          "Content-Type": "application/json",
+
+          Accept: "application/json",
+        },
+
+        body: JSON.stringify(payload),
+      });
+
+      const text = await res.text();
+
+      let result: ApiResponse<CreatorProfileApi> | null = null;
+
+      try {
+        result = text ? JSON.parse(text) : null;
+      } catch {
+        throw new Error(`Invalid server response. Status: ${res.status}`);
+      }
+
+      if (!res.ok) {
+        throw new Error(result?.message || "Unable to save profile.");
+      }
+
+      const updated = result?.data;
+
+      if (updated) {
+        setCreatorData(updated);
+      }
+
+      setOriginalProfile(profile);
 
       setEditing(false);
+
+      setSuccess("Profile updated successfully.");
+
+      /*
+       * Important:
+       *
+       * Redirect only after successful backend save.
+       */
+
+      router.replace("/platform/freelancer/dashboard");
+    } catch (err: any) {
+      console.error("UPDATE PROFILE ERROR:", err);
+
+      setError(err?.message || "Unable to update profile.");
     } finally {
       setSaving(false);
     }
   };
 
   /* =====================================================
-     SOCIAL CONNECT
+     CANCEL
   ===================================================== */
 
-  const handleConnectSocial = (platform: SocialPlatform) => {
+  const handleCancel = () => {
     /*
-     * Later this will start the real OAuth flow.
-     *
-     * Instagram:
-     * Instagram Graph API / Meta OAuth
-     *
-     * YouTube:
-     * Google OAuth / YouTube Data API
+     * If profile is incomplete,
+     * don't let Cancel hide the form.
      */
 
-    alert(
-      `${platform} connection will be available after API/OAuth integration.`,
-    );
+    if (!profileComplete) {
+      setError("Please complete your profile before continuing.");
+
+      return;
+    }
+
+    setProfile(originalProfile);
+
+    setEditing(false);
+
+    setShowCategoryMenu(false);
+
+    setShowLanguageMenu(false);
+
+    setError("");
   };
 
   /* =====================================================
-     REMOVE SOCIAL
+     LOADING
   ===================================================== */
 
-  const handleDisconnectSocial = (platform: SocialPlatform) => {
-    setProfile((previous) => ({
-      ...previous,
+  if (loading) {
+    return (
+      <div className="flex min-h-[600px] items-center justify-center bg-slate-50">
+        <div className="text-center">
+          <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-violet-600" />
 
-      socialAccounts: previous.socialAccounts.map((account) =>
-        account.platform === platform
-          ? {
-              ...account,
-              connected: false,
-            }
-          : account,
-      ),
-    }));
-  };
+          <p className="mt-4 text-sm font-medium text-slate-600">
+            Loading your creator profile...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  /* =====================================================
+     PAGE
+  ===================================================== */
 
   return (
     <div className="min-h-full bg-slate-50">
       <div className="mx-auto max-w-[1500px] p-5 sm:p-7 lg:p-8">
-        {/* =================================================
+        {/* ===============================================
             HEADER
-        ================================================= */}
+        =============================================== */}
 
         <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <button
               type="button"
-              onClick={() => router.push("/platform/freelancer")}
+              onClick={() => router.push("/platform/freelancer/dashboard")}
               className="mb-4 flex items-center gap-2 text-sm font-medium text-slate-500 transition hover:text-violet-600"
             >
               <ArrowLeft size={16} />
@@ -305,8 +637,8 @@ export default function FreelancerProfilePage() {
             </h1>
 
             <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
-              Manage your creator profile, social accounts, portfolio and
-              information used for MYSMME campaigns.
+              Complete your creator profile to access campaigns, reels and other
+              Creator Studio features.
             </p>
           </div>
 
@@ -317,8 +649,9 @@ export default function FreelancerProfilePage() {
               <>
                 <button
                   type="button"
-                  onClick={() => setEditing(false)}
-                  className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
+                  onClick={handleCancel}
+                  disabled={saving}
+                  className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
                 >
                   <X size={16} />
                   Cancel
@@ -348,9 +681,25 @@ export default function FreelancerProfilePage() {
           </div>
         </div>
 
-        {/* =================================================
+        {/* ===============================================
+            MESSAGE
+        =============================================== */}
+
+        {error && (
+          <div className="mt-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3">
+            <p className="text-sm font-medium text-red-700">{error}</p>
+          </div>
+        )}
+
+        {success && (
+          <div className="mt-6 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+            <p className="text-sm font-medium text-emerald-700">{success}</p>
+          </div>
+        )}
+
+        {/* ===============================================
             PROFILE HERO
-        ================================================= */}
+        =============================================== */}
 
         <div className="mt-8 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
           <div className="h-28 bg-gradient-to-r from-violet-600 via-purple-600 to-fuchsia-500 sm:h-36" />
@@ -360,24 +709,17 @@ export default function FreelancerProfilePage() {
               <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-end">
                 {/* AVATAR */}
 
-                <div className="relative">
-                  <div className="h-28 w-28 overflow-hidden rounded-2xl border-4 border-white bg-slate-100 shadow-lg sm:h-32 sm:w-32">
-                    <img
-                      src={profile.profileImage}
-                      alt={`${profile.firstName} ${profile.lastName}`}
-                      className="h-full w-full object-cover"
-                    />
+                {profile.profileImage ? (
+                  <img
+                    src={profile.profileImage}
+                    alt={`${profile.firstName} ${profile.lastName}`}
+                    className="h-28 w-28 rounded-2xl border-4 border-white bg-slate-100 object-cover shadow-lg sm:h-32 sm:w-32"
+                  />
+                ) : (
+                  <div className="flex h-28 w-28 items-center justify-center rounded-2xl border-4 border-white bg-violet-100 text-4xl font-bold text-violet-700 shadow-lg sm:h-32 sm:w-32">
+                    {profile.firstName.charAt(0).toUpperCase() || "C"}
                   </div>
-
-                  {editing && (
-                    <button
-                      type="button"
-                      className="absolute bottom-2 right-2 flex h-9 w-9 items-center justify-center rounded-full bg-violet-600 text-white shadow-lg hover:bg-violet-700"
-                    >
-                      <Camera size={16} />
-                    </button>
-                  )}
-                </div>
+                )}
 
                 {/* NAME */}
 
@@ -394,15 +736,18 @@ export default function FreelancerProfilePage() {
                     )}
                   </div>
 
-                  <p className="mt-1 text-sm text-slate-500">
-                    Fashion & Lifestyle Creator
-                  </p>
+                  <p className="mt-1 text-sm text-slate-500">MYSMME Creator</p>
 
                   <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-slate-400">
-                    <span className="flex items-center gap-1">
-                      <MapPin size={13} />
-                      {profile.location}, {profile.country}
-                    </span>
+                    {profile.location && (
+                      <span className="flex items-center gap-1">
+                        <MapPin size={13} />
+
+                        {profile.location}
+
+                        {profile.country ? `, ${profile.country}` : ""}
+                      </span>
+                    )}
 
                     <span className="flex items-center gap-1">
                       <Globe2 size={13} />
@@ -412,7 +757,7 @@ export default function FreelancerProfilePage() {
                 </div>
               </div>
 
-              {/* CREATOR SCORE */}
+              {/* COMPLETION */}
 
               <div className="rounded-xl bg-violet-50 px-5 py-4">
                 <p className="text-[10px] font-bold uppercase tracking-wide text-violet-500">
@@ -421,28 +766,31 @@ export default function FreelancerProfilePage() {
 
                 <div className="mt-1 flex items-end gap-2">
                   <span className="text-2xl font-bold text-violet-700">
-                    92%
+                    {profileCompletion}%
                   </span>
 
                   <span className="pb-1 text-xs text-violet-500">Complete</span>
                 </div>
 
                 <div className="mt-2 h-1.5 w-32 overflow-hidden rounded-full bg-violet-100">
-                  <div className="h-full w-[92%] rounded-full bg-violet-600" />
+                  <div
+                    className="h-full rounded-full bg-violet-600 transition-all duration-500"
+                    style={{
+                      width: `${profileCompletion}%`,
+                    }}
+                  />
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* =================================================
+        {/* ===============================================
             MAIN GRID
-        ================================================= */}
+        =============================================== */}
 
         <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
-          {/* =================================================
-              LEFT
-          ================================================= */}
+          {/* LEFT */}
 
           <div className="space-y-6">
             {/* BASIC INFORMATION */}
@@ -450,7 +798,7 @@ export default function FreelancerProfilePage() {
             <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-7">
               <SectionHeader
                 title="Basic Information"
-                description="Your personal information used for campaign communication."
+                description="Your information used for creator campaigns."
                 icon={<User size={18} />}
               />
 
@@ -458,36 +806,29 @@ export default function FreelancerProfilePage() {
                 <InputField
                   label="First Name"
                   value={profile.firstName}
-                  disabled={!editing}
-                  onChange={(value) => updateField("firstName", value)}
+                  disabled
                 />
 
                 <InputField
                   label="Last Name"
                   value={profile.lastName}
-                  disabled={!editing}
-                  onChange={(value) => updateField("lastName", value)}
+                  disabled
                 />
 
                 <InputField
                   label="Email"
                   value={profile.email}
-                  disabled={!editing}
+                  disabled
                   icon={<Mail size={15} />}
-                  onChange={(value) => updateField("email", value)}
                 />
 
-                <InputField
-                  label="Phone"
-                  value={profile.phone}
-                  disabled={!editing}
-                  onChange={(value) => updateField("phone", value)}
-                />
+                <InputField label="Phone" value={profile.phone} disabled />
 
                 <InputField
-                  label="City"
+                  label="City / Location"
                   value={profile.location}
                   disabled={!editing}
+                  required
                   icon={<MapPin size={15} />}
                   onChange={(value) => updateField("location", value)}
                 />
@@ -496,6 +837,7 @@ export default function FreelancerProfilePage() {
                   label="Country"
                   value={profile.country}
                   disabled={!editing}
+                  required
                   onChange={(value) => updateField("country", value)}
                 />
               </div>
@@ -504,7 +846,7 @@ export default function FreelancerProfilePage() {
 
               <div className="mt-5">
                 <label className="text-xs font-semibold text-slate-700">
-                  Creator Bio
+                  Creator Bio <span className="text-red-500">*</span>
                 </label>
 
                 <textarea
@@ -512,6 +854,7 @@ export default function FreelancerProfilePage() {
                   disabled={!editing}
                   onChange={(event) => updateField("bio", event.target.value)}
                   rows={4}
+                  placeholder="Tell brands about yourself, your content style and your audience..."
                   className="mt-2 w-full resize-none rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-violet-400 focus:ring-4 focus:ring-violet-50 disabled:cursor-default disabled:bg-slate-50"
                 />
               </div>
@@ -538,13 +881,18 @@ export default function FreelancerProfilePage() {
                       <button
                         type="button"
                         onClick={() => toggleCategory(category)}
-                        className="rounded-full hover:bg-violet-100"
                       >
                         <X size={13} />
                       </button>
                     )}
                   </span>
                 ))}
+
+                {profile.categories.length === 0 && (
+                  <span className="text-sm text-slate-400">
+                    No category selected.
+                  </span>
+                )}
               </div>
 
               {editing && (
@@ -611,6 +959,12 @@ export default function FreelancerProfilePage() {
                     )}
                   </span>
                 ))}
+
+                {profile.languages.length === 0 && (
+                  <span className="text-sm text-slate-400">
+                    No language selected.
+                  </span>
+                )}
               </div>
 
               {editing && (
@@ -649,225 +1003,169 @@ export default function FreelancerProfilePage() {
                 </div>
               )}
             </section>
-
-            {/* PORTFOLIO */}
-
-            <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-7">
-              <SectionHeader
-                title="Creator Portfolio"
-                description="Show brands the quality and style of your content."
-                icon={<Sparkles size={18} />}
-              />
-
-              <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
-                {profile.portfolio.map((image, index) => (
-                  <div
-                    key={image}
-                    className="group relative aspect-[4/5] overflow-hidden rounded-xl bg-slate-100"
-                  >
-                    <img
-                      src={image}
-                      alt={`Portfolio ${index + 1}`}
-                      className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
-                    />
-
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 transition group-hover:opacity-100" />
-
-                    {editing && (
-                      <button
-                        type="button"
-                        className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-red-500 shadow"
-                      >
-                        <X size={14} />
-                      </button>
-                    )}
-                  </div>
-                ))}
-
-                {editing && (
-                  <button
-                    type="button"
-                    className="flex aspect-[4/5] flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 text-slate-400 transition hover:border-violet-300 hover:bg-violet-50 hover:text-violet-600"
-                  >
-                    <Camera size={22} />
-
-                    <span className="mt-2 text-xs font-semibold">Add Work</span>
-                  </button>
-                )}
-              </div>
-            </section>
           </div>
 
-          {/* =================================================
-              RIGHT
-          ================================================= */}
+          {/* RIGHT */}
 
           <div className="space-y-6">
-            {/* SOCIAL ACCOUNTS */}
+            {/* COLLABORATION PRICE */}
 
             <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
               <SectionHeader
-                title="Social Accounts"
-                description="Connect your creator accounts for campaigns."
-                icon={<Users size={18} />}
-              />
-
-              <div className="mt-5 space-y-4">
-                {profile.socialAccounts.map((account) => (
-                  <SocialAccountCard
-                    key={account.platform}
-                    account={account}
-                    onConnect={() => handleConnectSocial(account.platform)}
-                    onDisconnect={() =>
-                      handleDisconnectSocial(account.platform)
-                    }
-                  />
-                ))}
-              </div>
-
-              <div className="mt-5 rounded-xl bg-amber-50 p-4">
-                <p className="text-xs font-semibold text-amber-800">
-                  Why connect your accounts?
-                </p>
-
-                <p className="mt-1 text-[11px] leading-5 text-amber-700">
-                  Connected accounts allow MYSMME to verify your audience size
-                  and match you with suitable campaigns.
-                </p>
-              </div>
-            </section>
-
-            {/* CREATOR STATS */}
-
-            <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <SectionHeader
-                title="Creator Statistics"
-                description="Your current social reach."
-                icon={<Users size={18} />}
-              />
-
-              <div className="mt-5 space-y-3">
-                {profile.socialAccounts.map((account) => (
-                  <div
-                    key={account.platform}
-                    className="flex items-center justify-between rounded-xl bg-slate-50 p-4"
-                  >
-                    <div className="flex items-center gap-3">
-                      <PlatformIcon platform={account.platform} />
-
-                      <div>
-                        <p className="text-xs font-semibold text-slate-800">
-                          {account.platform}
-                        </p>
-
-                        <p className="mt-0.5 text-[10px] text-slate-400">
-                          {account.username}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="text-right">
-                      <p className="text-sm font-bold text-slate-900">
-                        {formatFollowers(account.followers)}
-                      </p>
-
-                      <p className="text-[9px] uppercase tracking-wide text-slate-400">
-                        {account.platform === "Instagram"
-                          ? "Followers"
-                          : "Subscribers"}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-
-            {/* CAMPAIGN ELIGIBILITY */}
-
-            <section className="rounded-2xl border border-violet-100 bg-gradient-to-br from-violet-50 to-fuchsia-50 p-6">
-              <div className="flex items-start gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-violet-600 shadow-sm">
-                  <Sparkles size={18} />
-                </div>
-
-                <div>
-                  <h3 className="text-sm font-bold text-slate-900">
-                    Campaign Eligibility
-                  </h3>
-
-                  <p className="mt-1 text-xs leading-5 text-slate-500">
-                    Your current profile qualifies you for the following creator
-                    campaigns.
-                  </p>
-                </div>
-              </div>
-
-              <div className="mt-5 space-y-2">
-                <EligibilityItem text="Fashion campaigns" />
-
-                <EligibilityItem text="Saree & ethnic wear campaigns" />
-
-                <EligibilityItem text="Instagram campaigns" />
-
-                <EligibilityItem text="Lifestyle campaigns" />
-              </div>
-            </section>
-
-            {/* PAYMENT */}
-
-            <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <SectionHeader
-                title="Payment Profile"
-                description="Manage how your campaign earnings are paid."
+                title="Collaboration"
+                description="Your expected creator collaboration price."
                 icon={<IndianRupee size={18} />}
               />
 
-              <div className="mt-5 rounded-xl bg-slate-50 p-4">
-                <div className="flex items-center justify-between">
+              <div className="mt-5">
+                <InputField
+                  label="Expected Price"
+                  value={profile.expectedPrice}
+                  disabled={!editing}
+                  type="number"
+                  icon={<IndianRupee size={15} />}
+                  onChange={(value) => updateField("expectedPrice", value)}
+                />
+
+                <p className="mt-2 text-xs leading-5 text-slate-400">
+                  This is your expected rate. Final campaign pricing can still
+                  vary.
+                </p>
+              </div>
+            </section>
+
+            {/* INSTAGRAM */}
+
+            <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <SectionHeader
+                title="Instagram"
+                description="Your Instagram creator account."
+                icon={<FaInstagram size={18} />}
+              />
+
+              <div className="mt-5">
+                <InputField
+                  label="Instagram Username"
+                  value={profile.instagramUsername}
+                  disabled={!editing}
+                  placeholder="yourusername"
+                  onChange={(value) => updateField("instagramUsername", value)}
+                />
+              </div>
+
+              <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <div className="flex items-center justify-between gap-4">
                   <div>
-                    <p className="text-xs font-semibold text-slate-800">
-                      Payment details
+                    <p className="text-sm font-semibold text-slate-800">
+                      Instagram connection
                     </p>
 
-                    <p className="mt-1 text-[10px] text-slate-400">
-                      Not configured
+                    <p className="mt-1 text-xs text-slate-500">
+                      {creatorData?.instagramConnected
+                        ? "Your Instagram account is connected."
+                        : "Instagram API connection has not been completed yet."}
                     </p>
                   </div>
 
-                  <button
-                    type="button"
-                    className="text-xs font-semibold text-violet-600 hover:text-violet-700"
-                  >
-                    Configure
-                  </button>
+                  {creatorData?.instagramConnected ? (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-3 py-1.5 text-xs font-semibold text-emerald-700">
+                      <CheckCircle2 size={13} />
+                      Connected
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => router.push("/platform/freelancer/social")}
+                      className="rounded-lg bg-violet-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-violet-700"
+                    >
+                      Connect
+                    </button>
+                  )}
                 </div>
+              </div>
+
+              {creatorData?.instagramConnected && (
+                <div className="mt-4 grid grid-cols-2 gap-3">
+                  <SmallStat
+                    label="Followers"
+                    value={formatNumber(creatorData.followersCount || 0)}
+                  />
+
+                  <SmallStat
+                    label="Avg. Reel Views"
+                    value={formatNumber(creatorData.avgReelViews || 0)}
+                  />
+
+                  <SmallStat
+                    label="Engagement"
+                    value={`${(creatorData.engagementRate || 0).toFixed(2)}%`}
+                  />
+
+                  <SmallStat
+                    label="Creator Score"
+                    value={`${creatorData.creatorScore || 0}/100`}
+                  />
+                </div>
+              )}
+            </section>
+
+            {/* COMPLETION REQUIREMENTS */}
+
+            <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <h3 className="text-sm font-semibold text-slate-900">
+                Profile Requirements
+              </h3>
+
+              <p className="mt-1 text-xs text-slate-500">
+                Complete these fields to unlock Creator Studio.
+              </p>
+
+              <div className="mt-5 space-y-3">
+                <Requirement
+                  label="Creator bio"
+                  complete={Boolean(profile.bio.trim())}
+                />
+
+                <Requirement
+                  label="City / location"
+                  complete={Boolean(profile.location.trim())}
+                />
+
+                <Requirement
+                  label="Country"
+                  complete={Boolean(profile.country.trim())}
+                />
+
+                <Requirement
+                  label="Content category"
+                  complete={profile.categories.length > 0}
+                />
+
+                <Requirement
+                  label="Language"
+                  complete={profile.languages.length > 0}
+                />
               </div>
             </section>
           </div>
         </div>
 
-        {/* =================================================
-            FOOTER NOTE
-        ================================================= */}
+        {/* MOBILE SAVE */}
 
-        <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-5">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-500">
-              <CheckCircle2 size={18} />
-            </div>
+        {editing && (
+          <div className="mt-6 sm:hidden">
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={saving}
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-violet-600 px-5 py-3.5 text-sm font-semibold text-white disabled:opacity-60"
+            >
+              <Save size={16} />
 
-            <div>
-              <p className="text-xs font-semibold text-slate-800">
-                Keep your profile updated
-              </p>
-
-              <p className="mt-1 text-[11px] leading-5 text-slate-500">
-                Brands use your profile, audience information and portfolio to
-                determine campaign eligibility.
-              </p>
-            </div>
+              {saving ? "Saving..." : "Save Profile"}
+            </button>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
@@ -888,58 +1186,65 @@ function SectionHeader({
 }) {
   return (
     <div className="flex items-start gap-3">
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-violet-50 text-violet-600">
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-50 text-violet-600">
         {icon}
       </div>
 
       <div>
-        <h2 className="text-sm font-bold text-slate-900">{title}</h2>
+        <h2 className="text-sm font-semibold text-slate-900">{title}</h2>
 
-        <p className="mt-1 text-xs leading-5 text-slate-400">{description}</p>
+        <p className="mt-1 text-xs leading-5 text-slate-500">{description}</p>
       </div>
     </div>
   );
 }
 
 /* =========================================================
-   INPUT FIELD
+   INPUT
 ========================================================= */
 
 function InputField({
   label,
   value,
   disabled,
-  icon,
   onChange,
+  icon,
+  type = "text",
+  placeholder,
+  required = false,
 }: {
   label: string;
   value: string;
-  disabled: boolean;
+  disabled?: boolean;
+  onChange?: (value: string) => void;
   icon?: React.ReactNode;
-  onChange: (value: string) => void;
+  type?: string;
+  placeholder?: string;
+  required?: boolean;
 }) {
   return (
     <div>
-      <label className="text-xs font-semibold text-slate-700">{label}</label>
+      <label className="text-xs font-semibold text-slate-700">
+        {label}
+
+        {required && <span className="ml-1 text-red-500">*</span>}
+      </label>
 
       <div className="relative mt-2">
         {icon && (
-          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+          <div className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
             {icon}
-          </span>
+          </div>
         )}
 
         <input
-          type="text"
+          type={type}
           value={value}
           disabled={disabled}
-          onChange={(event) => onChange(event.target.value)}
-          className={`h-11 w-full rounded-xl border border-slate-200 px-4 text-sm text-slate-700 outline-none transition ${
+          placeholder={placeholder}
+          onChange={(event) => onChange?.(event.target.value)}
+          className={`w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-violet-400 focus:ring-4 focus:ring-violet-50 disabled:cursor-default disabled:bg-slate-50 ${
             icon ? "pl-10" : ""
-          } ${
-            disabled
-              ? "cursor-default bg-slate-50"
-              : "bg-white focus:border-violet-400 focus:ring-4 focus:ring-violet-50"
           }`}
         />
       </div>
@@ -948,129 +1253,66 @@ function InputField({
 }
 
 /* =========================================================
-   SOCIAL ACCOUNT CARD
+   REQUIREMENT
 ========================================================= */
 
-function SocialAccountCard({
-  account,
-  onConnect,
-  onDisconnect,
+function Requirement({
+  label,
+  complete,
 }: {
-  account: SocialAccount;
-  onConnect: () => void;
-  onDisconnect: () => void;
+  label: string;
+  complete: boolean;
 }) {
-  const isInstagram = account.platform === "Instagram";
-
   return (
-    <div className="rounded-xl border border-slate-200 p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <PlatformIcon platform={account.platform} />
-
-          <div>
-            <p className="text-xs font-bold text-slate-800">
-              {account.platform}
-            </p>
-
-            <p className="mt-0.5 text-[10px] text-slate-400">
-              {account.username}
-            </p>
-          </div>
-        </div>
-
-        {account.connected && (
-          <span className="flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-1 text-[9px] font-semibold text-emerald-600">
-            <CheckCircle2 size={11} />
-            Connected
-          </span>
+    <div className="flex items-center gap-2">
+      <div
+        className={`flex h-5 w-5 items-center justify-center rounded-full ${
+          complete
+            ? "bg-emerald-100 text-emerald-600"
+            : "bg-slate-100 text-slate-400"
+        }`}
+      >
+        {complete ? (
+          <Check size={12} />
+        ) : (
+          <span className="h-1.5 w-1.5 rounded-full bg-current" />
         )}
       </div>
 
-      {account.connected ? (
-        <div className="mt-4 flex items-center justify-between">
-          <div>
-            <p className="text-sm font-bold text-slate-900">
-              {formatFollowers(account.followers)}
-            </p>
-
-            <p className="text-[9px] uppercase tracking-wide text-slate-400">
-              {isInstagram ? "Followers" : "Subscribers"}
-            </p>
-          </div>
-
-          <button
-            type="button"
-            onClick={onDisconnect}
-            className="text-[10px] font-semibold text-red-500 hover:text-red-600"
-          >
-            Disconnect
-          </button>
-        </div>
-      ) : (
-        <button
-          type="button"
-          onClick={onConnect}
-          className={`mt-4 flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-xs font-semibold text-white ${
-            isInstagram
-              ? "bg-gradient-to-r from-pink-500 via-red-500 to-yellow-500"
-              : "bg-red-600 hover:bg-red-700"
-          }`}
-        >
-          {isInstagram ? <FaInstagram size={15} /> : <FaYoutube size={15} />}
-          Connect {account.platform}
-        </button>
-      )}
+      <span
+        className={`text-xs ${
+          complete ? "font-medium text-slate-700" : "text-slate-400"
+        }`}
+      >
+        {label}
+      </span>
     </div>
   );
 }
 
 /* =========================================================
-   PLATFORM ICON
+   SMALL STAT
 ========================================================= */
 
-function PlatformIcon({ platform }: { platform: SocialPlatform }) {
-  const isInstagram = platform === "Instagram";
-
+function SmallStat({ label, value }: { label: string; value: string }) {
   return (
-    <div
-      className={`flex h-10 w-10 items-center justify-center rounded-xl ${
-        isInstagram ? "bg-pink-50 text-pink-600" : "bg-red-50 text-red-600"
-      }`}
-    >
-      {isInstagram ? <FaInstagram size={19} /> : <FaYoutube size={19} />}
+    <div className="rounded-xl bg-slate-50 p-3">
+      <p className="text-[10px] font-medium uppercase tracking-wide text-slate-400">
+        {label}
+      </p>
+
+      <p className="mt-1 text-sm font-bold text-slate-800">{value}</p>
     </div>
   );
 }
 
 /* =========================================================
-   ELIGIBILITY ITEM
+   NUMBER FORMAT
 ========================================================= */
 
-function EligibilityItem({ text }: { text: string }) {
-  return (
-    <div className="flex items-center gap-2">
-      <div className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
-        <Check size={11} />
-      </div>
-
-      <span className="text-xs font-medium text-slate-600">{text}</span>
-    </div>
-  );
-}
-
-/* =========================================================
-   FORMAT FOLLOWERS
-========================================================= */
-
-function formatFollowers(followers: number) {
-  if (followers >= 1000000) {
-    return `${(followers / 1000000).toFixed(1)}M`;
-  }
-
-  if (followers >= 1000) {
-    return `${(followers / 1000).toFixed(1)}K`;
-  }
-
-  return followers.toString();
+function formatNumber(value: number) {
+  return new Intl.NumberFormat("en-IN", {
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }).format(value);
 }

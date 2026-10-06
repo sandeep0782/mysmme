@@ -16,10 +16,12 @@ import {
   IndianRupee,
   CreditCard,
   RotateCcw,
+  Printer,
 } from "lucide-react";
 
 import Pagination from "@/components/Admin/Pagination";
 import { useGetUserOrdersQuery } from "@/store/api/orderApi";
+import { printAddressLabel } from "@/utils/printAddressLabel";
 
 // Change this import according to your actual order API
 // import { useGetOrdersQuery } from "@/store/api/orderApi";
@@ -52,6 +54,23 @@ type Order = {
     name?: string;
     email?: string;
     phone?: string;
+  };
+  shippingAddress?: {
+    _id?: string;
+    name?: string;
+    phone?: string;
+
+    address?: string;
+    addressLine1?: string;
+    addressLine2?: string;
+
+    city?: string;
+    state?: string;
+
+    postalCode?: string;
+    pincode?: string;
+
+    country?: string;
   };
 
   items?: Array<{
@@ -103,7 +122,7 @@ const Page = () => {
     isLoading,
     isError,
   } = useGetUserOrdersQuery(undefined);
-
+  console.log("ordersResponse", ordersResponse);
   const orders: Order[] = ordersResponse?.data ?? ordersResponse?.orders ?? [];
 
   // TEMPORARY DEMO
@@ -338,7 +357,36 @@ const Page = () => {
   // ============================================================
   // RENDER
   // ============================================================
+  const handlePrintAddress = (order: Order) => {
+    const address = order.shippingAddress;
 
+    console.log("ORDER FOR PRINT:", order);
+    console.log("SHIPPING ADDRESS:", address);
+
+    if (!address) {
+      alert("Shipping address is not available for this order.");
+      return;
+    }
+
+    printAddressLabel({
+      name:
+        address.name || order.customer?.name || order.user?.name || "Customer",
+
+      phone: address.phone || order.customer?.phone || order.user?.phone || "",
+
+      address: address.address || address.addressLine1 || "",
+
+      addressLine2: address.addressLine2 || "",
+
+      city: address.city || "",
+
+      state: address.state || "",
+
+      postalCode: address.postalCode || address.pincode || "",
+
+      country: address.country || "India",
+    });
+  };
   return (
     <div className="min-h-screen bg-slate-50">
       <main className="px-4 py-6 sm:px-6 lg:px-8">
@@ -779,7 +827,17 @@ const Page = () => {
                         {/* ACTION */}
 
                         <td className="whitespace-nowrap px-6 py-5">
-                          <div className="flex justify-end">
+                          <div className="flex justify-end gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handlePrintAddress(order)}
+                              className="inline-flex h-9 items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 text-sm font-semibold text-blue-600 transition hover:bg-blue-100"
+                              title="Print shipping label"
+                            >
+                              <Printer className="h-4 w-4" />
+                              Print
+                            </button>
+
                             <Link
                               href={`/platform/admin/orders/${order._id}`}
                               className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
