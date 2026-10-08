@@ -559,7 +559,7 @@ export default function CheckoutPage() {
 
               shippingAddress: selectedAddress?._id,
 
-              couponCode: appliedCoupon?.code,
+              couponCode: appliedCoupon || undefined,
             }).unwrap();
 
             if (!result.success) {
