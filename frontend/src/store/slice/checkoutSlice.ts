@@ -32,6 +32,7 @@ const checkoutSlice = createSlice({
     },
     resetCheckout: (state) => {
       state.step = "cart";
+      state.orderId = null;
       state.orderAmount = null;
     },
   },

@@ -7,6 +7,7 @@ const API_URLS = {
 
   CREATE_RAZORPAY_PAYMENT: `${BASE_URL}/order/payment-razorpay`,
 
+  VERIFY_RAZORPAY_PAYMENT: `${BASE_URL}/order/verify-payment`,
 };
 
 export const orderApi = api.injectEndpoints({
@@ -34,11 +35,41 @@ export const orderApi = api.injectEndpoints({
     }),
 
     createRazorpayPayment: builder.mutation({
-      query: (orderId: string) => ({
+      query: ({
+        couponCode,
+        shippingAddress,
+      }: {
+        couponCode?: string;
+        shippingAddress?: any;
+      }) => ({
         url: API_URLS.CREATE_RAZORPAY_PAYMENT,
         method: "POST",
-        body: { orderId },
+        body: {
+          couponCode,
+          shippingAddress,
+        },
       }),
+    }),
+
+    verifyRazorpayPayment: builder.mutation({
+      query: ({
+        razorpay_payment_id,
+        razorpay_order_id,
+        razorpay_signature,
+        shippingAddress,
+        couponCode,
+      }) => ({
+        url: API_URLS.VERIFY_RAZORPAY_PAYMENT,
+        method: "POST",
+        body: {
+          razorpay_payment_id,
+          razorpay_order_id,
+          razorpay_signature,
+          shippingAddress,
+          couponCode,
+        },
+      }),
+      invalidatesTags: ["Order", "Cart"],
     }),
   }),
 });
@@ -48,4 +79,5 @@ export const {
   useGetUserOrdersQuery,
   useGetOrderByIdQuery,
   useCreateRazorpayPaymentMutation,
+  useVerifyRazorpayPaymentMutation,
 } = orderApi;

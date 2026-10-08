@@ -8,6 +8,7 @@ import crypto from "crypto";
 import PDFDocument from "pdfkit";
 import SellerOrder from "../models/SellerOrder";
 import { validateCoupon } from "../services/couponService";
+import { sendOrderConfirmationEmails } from "../config/orderEmailService";
 
 dotenv.config();
 
@@ -36,6 +37,13 @@ export const createOrUpdateOrder = async (req: Request, res: Response) => {
       couponCode,
     } = req.body;
 
+    if (paymentMethod === "razorpay") {
+      return response(
+        res,
+        400,
+        "Razorpay orders must be created through the payment verification flow",
+      );
+    }
     // ==========================================================
     // 1. GET CART
     // ==========================================================
@@ -133,6 +141,10 @@ export const createOrUpdateOrder = async (req: Request, res: Response) => {
       if (!order) {
         return response(res, 404, "Order not found");
       }
+
+      if (order.paymentStatus === "completed") {
+        return response(res, 400, "Order is already completed");
+      }
     }
 
     // ==========================================================
@@ -173,9 +185,9 @@ export const createOrUpdateOrder = async (req: Request, res: Response) => {
        * Do not count current order
        * if we're updating it.
        */
-      if (orderId) {
+      if (order?._id) {
         completedOrderFilter._id = {
-          $ne: orderId,
+          $ne: order._id,
         };
       }
 
@@ -311,156 +323,12 @@ export const createOrUpdateOrder = async (req: Request, res: Response) => {
       if (paymentMethod) {
         order.paymentMethod = paymentMethod;
       }
-
-      if (paymentDetails) {
-        order.paymentDetails = {
-          ...order.paymentDetails,
-          ...paymentDetails,
-        };
-
-        order.paymentStatus = "completed";
-
-        order.status = "processing";
-      }
-
       await order.save();
-    }
-
-    // ==========================================================
-    // 11. CREATE NEW ORDER
-    // ==========================================================
-    else {
-      order = new Order({
-        user: userId,
-
-        items: orderItems,
-
-        subtotal: totalItemsAmount,
-
-        shippingCharge: maximumShippingCharge,
-
-        couponCode: validatedCouponCode,
-
-        couponDiscount,
-
-        totalAmount,
-
-        shippingAddress,
-
-        paymentMethod,
-
-        paymentDetails,
-
-        paymentStatus: paymentDetails ? "completed" : "pending",
-
-        status: "processing",
-      });
-
-      await order.save();
-    }
-
-    // ==========================================================
-    // 12. CREATE SELLER ORDERS AFTER PAYMENT
-    // ==========================================================
-
-    if (paymentDetails) {
-      const sellerGroups = new Map<string, any[]>();
-
-      // --------------------------------------------------------
-      // Group items by seller
-      // --------------------------------------------------------
-
-      for (const item of orderItems) {
-        const sellerId = item.seller?.toString();
-
-        if (!sellerId) {
-          throw new Error(
-            `Product ${item.product} does not have a valid seller`,
-          );
-        }
-
-        if (!sellerGroups.has(sellerId)) {
-          sellerGroups.set(sellerId, []);
-        }
-
-        sellerGroups.get(sellerId)!.push(item);
-      }
-
-      // --------------------------------------------------------
-      // Create/update SellerOrder
-      // --------------------------------------------------------
-
-      for (const [sellerId, sellerItems] of sellerGroups.entries()) {
-        const sellerTotal = sellerItems.reduce(
-          (acc: number, item: any) => acc + Number(item.totalPrice),
-          0,
-        );
-
-        /*
-         * Your SellerOrder schema uses:
-         *
-         * order
-         * seller
-         * items
-         * totalAmount
-         * paymentStatus
-         * status
-         *
-         * NOT parentOrder.
-         */
-
-        const existingSellerOrder = await SellerOrder.findOne({
-          order: order._id,
-
-          seller: sellerId,
-        });
-
-        if (existingSellerOrder) {
-          existingSellerOrder.items = sellerItems;
-
-          existingSellerOrder.totalAmount = sellerTotal;
-
-          existingSellerOrder.paymentStatus = "completed";
-
-          if (existingSellerOrder.status === "pending") {
-            existingSellerOrder.status = "processing";
-          }
-
-          await existingSellerOrder.save();
-        } else {
-          await SellerOrder.create({
-            order: order._id,
-
-            seller: sellerId,
-
-            items: sellerItems,
-
-            totalAmount: sellerTotal,
-
-            paymentStatus: "completed",
-
-            status: "processing",
-          });
-        }
-      }
     }
 
     // ==========================================================
     // 13. CLEAR CART AFTER PAYMENT COMPLETION
     // ==========================================================
-
-    if (paymentDetails) {
-      await Cart.findOneAndUpdate(
-        {
-          user: userId,
-        },
-        {
-          $set: {
-            items: [],
-          },
-        },
-      );
-    }
 
     // ==========================================================
     // 14. RESPONSE
@@ -571,100 +439,189 @@ export const getUserOrders = async (req: Request, res: Response) => {
 // ============================================================
 // CREATE RAZORPAY ORDER
 // ============================================================
+// ============================================================
+// CREATE RAZORPAY PAYMENT ORDER
+// ============================================================
 
 export const createPaymentWithRazorpay = async (
   req: Request,
   res: Response,
 ) => {
   try {
-    const { orderId } = req.body;
-
     const userId = req?.id;
 
     if (!userId) {
       return response(res, 401, "Unauthorized");
     }
 
-    const order = await Order.findOne({
-      _id: orderId,
+    const { couponCode, shippingAddress } = req.body;
+
+    // ==========================================================
+    // 1. GET CART
+    // ==========================================================
+
+    const cart = await Cart.findOne({
       user: userId,
+    })
+      .populate("items.product")
+      .lean();
+
+    if (!cart || !cart.items || cart.items.length === 0) {
+      return response(res, 400, "Cart is empty");
+    }
+
+    // ==========================================================
+    // 2. CALCULATE SUBTOTAL
+    // ==========================================================
+
+    const totalItemsAmount = cart.items.reduce((acc, item: any) => {
+      const product = item.product;
+
+      if (!product) {
+        throw new Error("One or more products no longer exist");
+      }
+
+      const unitPrice = Number(product.finalPrice);
+      const quantity = Number(item.quantity);
+
+      if (!Number.isFinite(unitPrice)) {
+        throw new Error(`Invalid price for product ${product._id}`);
+      }
+
+      if (!Number.isFinite(quantity) || quantity <= 0) {
+        throw new Error(`Invalid quantity for product ${product._id}`);
+      }
+
+      return acc + unitPrice * quantity;
+    }, 0);
+
+    // ==========================================================
+    // 3. SHIPPING
+    // ==========================================================
+
+    const shippingCharges = cart.items.map((item: any) => {
+      const product = item.product;
+
+      const charge = product?.shippingCharge;
+
+      if (charge === undefined || charge === null || charge === "") {
+        return 0;
+      }
+
+      if (typeof charge === "string") {
+        if (charge.trim().toLowerCase() === "free") {
+          return 0;
+        }
+
+        const parsed = Number(charge);
+
+        return Number.isFinite(parsed) ? parsed : 0;
+      }
+
+      if (typeof charge === "number") {
+        return Number.isFinite(charge) ? charge : 0;
+      }
+
+      return 0;
     });
 
-    if (!order) {
-      return response(res, 404, "Order not found");
+    const maximumShippingCharge = Math.max(0, ...shippingCharges);
+
+    // ==========================================================
+    // 4. COUPON
+    // ==========================================================
+
+    let couponDiscount = 0;
+    let validatedCouponCode: string | undefined;
+
+    if (typeof couponCode === "string" && couponCode.trim()) {
+      const normalizedCouponCode = couponCode.trim().toUpperCase();
+
+      const userOrderCount = await Order.countDocuments({
+        user: userId,
+        paymentStatus: "completed",
+      });
+
+      const couponResult = await validateCoupon({
+        code: normalizedCouponCode,
+        cartTotal: totalItemsAmount,
+        userId: userId.toString(),
+        userOrderCount,
+      });
+
+      if (!couponResult.valid) {
+        return res.status(400).json({
+          success: false,
+          message: couponResult.message || "Coupon is no longer valid.",
+        });
+      }
+
+      const calculatedDiscount = Number(couponResult.discountAmount ?? 0);
+
+      if (!Number.isFinite(calculatedDiscount) || calculatedDiscount < 0) {
+        return response(res, 400, "Invalid coupon discount amount");
+      }
+
+      couponDiscount = Math.min(calculatedDiscount, totalItemsAmount);
+
+      validatedCouponCode = couponResult.couponCode || normalizedCouponCode;
     }
 
-    if (order.paymentStatus === "completed") {
-      return response(res, 400, "Order is already paid");
-    }
+    // ==========================================================
+    // 5. FINAL TOTAL
+    // ==========================================================
 
-    if (!Number.isFinite(order.totalAmount) || order.totalAmount <= 0) {
-      return response(res, 400, "Invalid order amount");
-    }
+    const totalAmount =
+      Math.max(0, totalItemsAmount - couponDiscount) + maximumShippingCharge;
 
-    /*
-     * order.totalAmount already equals:
-     *
-     * subtotal
-     * - couponDiscount
-     * + shippingCharge
-     */
+    if (!Number.isFinite(totalAmount) || totalAmount <= 0) {
+      return response(res, 400, "Invalid payment amount");
+    }
 
     console.log("RAZORPAY PAYMENT AMOUNT:", {
-      orderId: order._id,
-
-      subtotal: order.subtotal,
-
-      couponCode: order.couponCode,
-
-      couponDiscount: order.couponDiscount,
-
-      shippingCharge: order.shippingCharge,
-
-      totalAmount: order.totalAmount,
-
-      amountInPaise: Math.round(order.totalAmount * 100),
+      userId,
+      subtotal: totalItemsAmount,
+      couponCode: validatedCouponCode,
+      couponDiscount,
+      shippingCharge: maximumShippingCharge,
+      totalAmount,
+      amountInPaise: Math.round(totalAmount * 100),
     });
 
-    const razorpayOrder = await razorpay.orders.create({
-      amount: Math.round(order.totalAmount * 100),
+    // ==========================================================
+    // 6. CREATE RAZORPAY ORDER
+    // ==========================================================
 
+    const razorpayOrder = await razorpay.orders.create({
+      amount: Math.round(totalAmount * 100),
       currency: "INR",
 
-      receipt: order._id.toString(),
+      receipt: `cart-${userId}-${Date.now()}`,
 
       notes: {
-        mysmmeOrderId: order._id.toString(),
-
-        couponCode: order.couponCode || "",
+        userId: userId.toString(),
+        couponCode: validatedCouponCode || "",
       },
     });
 
-    order.paymentDetails = {
-      ...order.paymentDetails,
-
-      razorpay_order_id: razorpayOrder.id,
-    };
-
-    /*
-     * Your old function assigned the ID
-     * but did not save it before responding.
-     */
-    await order.save();
+    // ==========================================================
+    // 7. RESPONSE
+    // ==========================================================
 
     return response(res, 200, "Razorpay order created", {
       order: razorpayOrder,
 
+      checkout: {
+        couponCode: validatedCouponCode,
+        shippingAddress,
+      },
+
       priceBreakdown: {
-        subtotal: order.subtotal,
-
-        couponCode: order.couponCode,
-
-        couponDiscount: order.couponDiscount,
-
-        shippingCharge: order.shippingCharge,
-
-        totalAmount: order.totalAmount,
+        subtotal: totalItemsAmount,
+        couponCode: validatedCouponCode,
+        couponDiscount,
+        shippingCharge: maximumShippingCharge,
+        totalAmount,
       },
     });
   } catch (error) {
@@ -674,6 +631,424 @@ export const createPaymentWithRazorpay = async (
   }
 };
 
+// ============================================================
+// VERIFY RAZORPAY PAYMENT + CREATE FINAL MYSMME ORDER
+// ============================================================
+
+export const verifyPaymentAndCreateOrder = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const userId = req?.id;
+
+    if (!userId) {
+      return response(res, 401, "Unauthorized");
+    }
+
+    const {
+      razorpay_payment_id,
+      razorpay_order_id,
+      razorpay_signature,
+      shippingAddress,
+      couponCode,
+    } = req.body;
+
+    // ==========================================================
+    // 1. BASIC VALIDATION
+    // ==========================================================
+
+    if (!razorpay_payment_id || !razorpay_order_id || !razorpay_signature) {
+      return response(res, 400, "Missing Razorpay payment details");
+    }
+
+    if (!shippingAddress) {
+      return response(res, 400, "Shipping address is required");
+    }
+
+    if (!process.env.RAZORPAY_KEY_SECRET) {
+      return response(res, 500, "Razorpay configuration missing");
+    }
+
+    // ==========================================================
+    // 2. IDEMPOTENCY CHECK
+    // Prevent duplicate MYSMME orders for same Razorpay payment
+    // ==========================================================
+
+    const existingOrder = await Order.findOne({
+      "paymentDetails.razorpay_payment_id": razorpay_payment_id,
+    });
+
+    if (existingOrder) {
+      console.log("♻️ Payment already processed:", razorpay_payment_id);
+
+      return response(res, 200, "Order already created", existingOrder);
+    }
+
+    // ==========================================================
+    // 3. VERIFY RAZORPAY SIGNATURE
+    // ==========================================================
+
+    const generatedSignature = crypto
+      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+      .update(`${razorpay_order_id}|${razorpay_payment_id}`)
+      .digest("hex");
+
+    if (generatedSignature !== razorpay_signature) {
+      console.error("❌ Invalid Razorpay payment signature");
+
+      return response(res, 400, "Invalid payment signature");
+    }
+
+    console.log("✅ Razorpay signature verified:", razorpay_payment_id);
+
+    const razorpayPayment = await razorpay.payments.fetch(razorpay_payment_id);
+
+    if (razorpayPayment.order_id !== razorpay_order_id) {
+      return response(res, 400, "Razorpay payment/order mismatch");
+    }
+
+    if (
+      razorpayPayment.status !== "captured" &&
+      razorpayPayment.status !== "authorized"
+    ) {
+      return response(res, 400, "Payment has not been completed");
+    }
+
+    // ==========================================================
+    // 4. GET CURRENT CART
+    // ==========================================================
+
+    const cart = await Cart.findOne({
+      user: userId,
+    })
+      .populate("items.product")
+      .lean();
+
+    if (!cart || !cart.items || cart.items.length === 0) {
+      return response(res, 400, "Cart is empty");
+    }
+
+    // ==========================================================
+    // 5. CALCULATE PRODUCT SUBTOTAL
+    // ==========================================================
+
+    const totalItemsAmount = cart.items.reduce((acc: number, item: any) => {
+      const product = item.product;
+
+      if (!product) {
+        throw new Error("One or more products no longer exist");
+      }
+
+      const unitPrice = Number(product.finalPrice);
+
+      const quantity = Number(item.quantity);
+
+      if (!Number.isFinite(unitPrice)) {
+        throw new Error(`Invalid price for product ${product._id}`);
+      }
+
+      if (!Number.isFinite(quantity) || quantity <= 0) {
+        throw new Error(`Invalid quantity for product ${product._id}`);
+      }
+
+      return acc + unitPrice * quantity;
+    }, 0);
+
+    // ==========================================================
+    // 6. SHIPPING
+    // ==========================================================
+
+    const shippingCharges = cart.items.map((item: any) => {
+      const product = item.product;
+
+      const charge = product?.shippingCharge;
+
+      if (charge === undefined || charge === null || charge === "") {
+        return 0;
+      }
+
+      if (typeof charge === "string") {
+        if (charge.trim().toLowerCase() === "free") {
+          return 0;
+        }
+
+        const parsed = Number(charge);
+
+        return Number.isFinite(parsed) ? parsed : 0;
+      }
+
+      if (typeof charge === "number") {
+        return Number.isFinite(charge) ? charge : 0;
+      }
+
+      return 0;
+    });
+
+    const maximumShippingCharge = Math.max(0, ...shippingCharges);
+
+    // ==========================================================
+    // 7. VALIDATE COUPON AGAIN
+    // ==========================================================
+
+    let couponDiscount = 0;
+
+    let validatedCouponCode: string | undefined;
+
+    if (typeof couponCode === "string" && couponCode.trim()) {
+      const normalizedCouponCode = couponCode.trim().toUpperCase();
+
+      const userOrderCount = await Order.countDocuments({
+        user: userId,
+        paymentStatus: "completed",
+      });
+
+      const couponResult = await validateCoupon({
+        code: normalizedCouponCode,
+        cartTotal: totalItemsAmount,
+        userId: userId.toString(),
+        userOrderCount,
+      });
+
+      if (!couponResult.valid) {
+        return response(
+          res,
+          400,
+          couponResult.message || "Coupon is no longer valid",
+        );
+      }
+
+      const discount = Number(couponResult.discountAmount ?? 0);
+
+      if (!Number.isFinite(discount) || discount < 0) {
+        return response(res, 400, "Invalid coupon discount");
+      }
+
+      couponDiscount = Math.min(discount, totalItemsAmount);
+
+      validatedCouponCode = couponResult.couponCode || normalizedCouponCode;
+    }
+
+    // ==========================================================
+    // 8. FINAL TOTAL
+    // ==========================================================
+
+    const totalAmount =
+      Math.max(0, totalItemsAmount - couponDiscount) + maximumShippingCharge;
+
+    if (!Number.isFinite(totalAmount) || totalAmount <= 0) {
+      return response(res, 400, "Invalid order amount");
+    }
+
+    // ==========================================================
+    // 9. VERIFY RAZORPAY ORDER AMOUNT
+    // ==========================================================
+
+    const razorpayOrder = await razorpay.orders.fetch(razorpay_order_id);
+
+    const expectedAmount = Math.round(totalAmount * 100);
+
+    if (Number(razorpayPayment.amount) !== expectedAmount) {
+      return response(res, 400, "Payment amount mismatch");
+    }
+
+    if (Number(razorpayOrder.amount) !== expectedAmount) {
+      console.error("❌ Razorpay amount mismatch", {
+        razorpayAmount: razorpayOrder.amount,
+        expectedAmount,
+      });
+
+      return response(res, 400, "Payment amount mismatch");
+    }
+
+    // ==========================================================
+    // 10. BUILD ORDER ITEMS
+    // ==========================================================
+
+    const orderItems = cart.items.map((item: any) => {
+      const product = item.product;
+
+      if (!product.seller) {
+        throw new Error(`Product "${product.title}" does not have a seller`);
+      }
+
+      const unitPrice = Number(product.finalPrice);
+
+      const quantity = Number(item.quantity);
+
+      return {
+        product: product._id,
+
+        productName: product.title,
+
+        seller: product.seller,
+
+        quantity,
+
+        unitPrice,
+
+        totalPrice: unitPrice * quantity,
+      };
+    });
+
+    // ==========================================================
+    // 11. CREATE FINAL MYSMME ORDER
+    // ==========================================================
+
+    const shippingAddressId =
+      typeof shippingAddress === "string"
+        ? shippingAddress
+        : shippingAddress?._id;
+
+    if (!shippingAddressId) {
+      return response(res, 400, "Invalid shipping address");
+    }
+
+    const order = new Order({
+      user: userId,
+
+      items: orderItems,
+
+      subtotal: totalItemsAmount,
+
+      shippingCharge: maximumShippingCharge,
+
+      couponCode: validatedCouponCode,
+
+      couponDiscount,
+
+      totalAmount,
+
+      shippingAddress: shippingAddressId,
+
+      paymentMethod: "razorpay",
+
+      paymentDetails: {
+        razorpay_payment_id,
+
+        razorpay_order_id,
+
+        razorpay_signature,
+      },
+
+      paymentStatus: "completed",
+
+      status: "processing",
+    });
+
+    await order.save();
+
+    console.log("✅ FINAL MYSMME ORDER CREATED:", order._id.toString());
+
+    // ==========================================================
+    // 12. CREATE SELLER ORDERS
+    // ==========================================================
+
+    const sellerGroups = new Map<string, any[]>();
+
+    for (const item of orderItems) {
+      const sellerId = item.seller?.toString();
+
+      if (!sellerId) {
+        continue;
+      }
+
+      if (!sellerGroups.has(sellerId)) {
+        sellerGroups.set(sellerId, []);
+      }
+
+      sellerGroups.get(sellerId)!.push(item);
+    }
+
+    for (const [sellerId, sellerItems] of sellerGroups.entries()) {
+      const sellerTotal = sellerItems.reduce(
+        (acc: number, item: any) => acc + Number(item.totalPrice),
+        0,
+      );
+
+      await SellerOrder.create({
+        order: order._id,
+
+        seller: sellerId,
+
+        items: sellerItems,
+
+        totalAmount: sellerTotal,
+
+        paymentStatus: "completed",
+
+        status: "processing",
+      });
+    }
+
+    // ==========================================================
+    // 13. SEND CONFIRMATION EMAIL
+    // ==========================================================
+
+    try {
+      const populatedOrder = await Order.findById(order._id)
+        .populate("user", "name email")
+        .populate("shippingAddress");
+
+      if (populatedOrder) {
+        const customer: any = populatedOrder.user;
+
+        const populatedAddress: any = populatedOrder.shippingAddress;
+
+        await sendOrderConfirmationEmails({
+          order: populatedOrder,
+
+          customer: {
+            name: customer?.name,
+
+            email: customer?.email,
+          },
+
+          shippingAddress: populatedAddress,
+        });
+
+        console.log("✅ Order confirmation email sent");
+      }
+    } catch (emailError) {
+      console.error("❌ Order email error:", emailError);
+    }
+
+    // ==========================================================
+    // 14. CLEAR CART
+    // ==========================================================
+
+    await Cart.findOneAndUpdate(
+      {
+        user: userId,
+      },
+      {
+        $set: {
+          items: [],
+        },
+      },
+    );
+
+    // ==========================================================
+    // 15. RESPONSE
+    // ==========================================================
+
+    return response(
+      res,
+      201,
+      "Payment verified and order created successfully",
+      order,
+    );
+  } catch (error) {
+    console.error("❌ verifyPaymentAndCreateOrder ERROR:", error);
+
+    return response(
+      res,
+      500,
+      "Unable to verify payment and create order",
+      error,
+    );
+  }
+};
 // ============================================================
 // RAZORPAY WEBHOOK
 // ============================================================

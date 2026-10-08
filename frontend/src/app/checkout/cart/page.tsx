@@ -47,9 +47,8 @@ import {
 } from "@/store/api/wishlistApi";
 
 import {
-  useCreateOrUpdateOrderMutation,
   useCreateRazorpayPaymentMutation,
-  useGetOrderByIdQuery,
+  useVerifyRazorpayPaymentMutation,
 } from "@/store/api/orderApi";
 
 import { Address } from "@/types/product";
@@ -63,11 +62,7 @@ import {
 
 import { toggleLoginDialog } from "@/store/slice/userSlice";
 
-import {
-  resetCheckout,
-  setCheckoutStep,
-  setOrderId,
-} from "@/store/slice/checkoutSlice";
+import { resetCheckout, setCheckoutStep } from "@/store/slice/checkoutSlice";
 
 import Spinner from "@/lib/Spinner";
 import { PriceDetails } from "@/components/PriceDetails";
@@ -97,7 +92,7 @@ export default function CheckoutPage() {
   const router = useRouter();
   const dispatch = useDispatch();
   const user = useSelector((state: RootState) => state.user.user);
-  const { step, orderId } = useSelector((state: RootState) => state.checkout);
+  const { step } = useSelector((state: RootState) => state.checkout);
   const cart = useSelector((state: RootState) => state.cart);
   const wishlist = useSelector((state: RootState) => state.wishlist.items);
   const [showAddressDialog, setShowAddressDialog] = useState(false);
@@ -148,13 +143,8 @@ export default function CheckoutPage() {
    * ============================================================
    */
 
-  const [createOrUpdateOrder] = useCreateOrUpdateOrderMutation();
-
-  const { data: orderData } = useGetOrderByIdQuery(orderId as string, {
-    skip: !orderId,
-  });
-
   const [createRazorpayOrder] = useCreateRazorpayPaymentMutation();
+  const [verifyRazorpayPayment] = useVerifyRazorpayPaymentMutation();
 
   /*
    * ============================================================
@@ -173,17 +163,6 @@ export default function CheckoutPage() {
    * SYNC ORDER ADDRESS
    * ============================================================
    */
-
-  useEffect(() => {
-    if (orderData?.shippingAddress) {
-      setSelectedAddress(orderData.shippingAddress);
-      return;
-    }
-
-    if (orderData?.data?.shippingAddress) {
-      setSelectedAddress(orderData.data.shippingAddress);
-    }
-  }, [orderData]);
 
   /*
    * ============================================================
@@ -297,13 +276,6 @@ export default function CheckoutPage() {
         /*
          * Recalculate existing order if one exists.
          */
-        if (orderId) {
-          await createOrUpdateOrder({
-            updates: {
-              orderId,
-            },
-          }).unwrap();
-        }
 
         toast.success(result.message || "Item removed from cart");
       } else {
@@ -336,14 +308,6 @@ export default function CheckoutPage() {
        * Require customer to apply again.
        */
       resetCoupon();
-
-      if (orderId) {
-        await createOrUpdateOrder({
-          updates: {
-            orderId,
-          },
-        }).unwrap();
-      }
 
       toast.success("Cart updated successfully");
     } catch (error) {
@@ -496,43 +460,12 @@ export default function CheckoutPage() {
      * CART → ADDRESS
      */
     if (step === "cart") {
-      try {
-        const cartItemsForOrder = validCartItems.map((item) => ({
-          productId: item.product._id,
-
-          quantity: item.quantity,
-        }));
-
-        const result = await createOrUpdateOrder({
-          updates: {
-            items: cartItemsForOrder,
-
-            /*
-             * Server must validate this
-             * coupon again.
-             */
-            couponCode: appliedCoupon || undefined,
-          },
-        }).unwrap();
-
-        if (result.success) {
-          toast.success("Order created successfully");
-
-          dispatch(setOrderId(result.data._id));
-
-          dispatch(setCheckoutStep("address"));
-        } else {
-          throw new Error(result.message || "Failed to create order");
-        }
-      } catch (error: any) {
-        const message =
-          error?.data?.data?.message ||
-          error?.data?.message ||
-          error?.message ||
-          "Failed to create order";
-
-        toast.error(message);
+      if (validCartItems.length === 0) {
+        toast.error("Your cart is empty.");
+        return;
       }
+
+      dispatch(setCheckoutStep("address"));
 
       return;
     }
@@ -564,27 +497,12 @@ export default function CheckoutPage() {
    * ============================================================
    */
 
-  const handleAddressSelect = async (address: Address) => {
+  const handleAddressSelect = (address: Address) => {
     setSelectedAddress(address);
 
     setShowAddressDialog(false);
 
-    if (!orderId) return;
-
-    try {
-      await createOrUpdateOrder({
-        updates: {
-          orderId,
-          shippingAddress: address,
-        },
-      }).unwrap();
-
-      toast.success("Address updated successfully");
-    } catch (error) {
-      console.error(error);
-
-      toast.error("Failed to update address");
-    }
+    toast.success("Address selected successfully");
   };
 
   /*
@@ -594,25 +512,21 @@ export default function CheckoutPage() {
    */
 
   const handlePayment = async () => {
-    if (!orderId) {
-      toast.error("No order found. Please try again.");
-
+    if (!selectedAddress) {
+      toast.error("Please select a delivery address.");
       return;
     }
 
     setIsProcessing(true);
 
     try {
-      /*
-       * IMPORTANT:
-       * Backend must recalculate order total
-       * and validate coupon before creating
-       * Razorpay order.
-       */
-
-      const { data, error } = await createRazorpayOrder(orderId);
+      const { data, error } = await createRazorpayOrder({
+        couponCode: appliedCoupon || undefined,
+        shippingAddress: selectedAddress,
+      });
 
       if (error) {
+        console.error("Razorpay order creation error:", error);
         throw new Error("Failed to create Razorpay order");
       }
 
@@ -634,54 +548,54 @@ export default function CheckoutPage() {
         description: "MYSMME Purchase",
 
         order_id: razorpayOrder.id,
-
         handler: async function (response: any) {
           try {
-            const result = await createOrUpdateOrder({
-              updates: {
-                orderId,
+            const result = await verifyRazorpayPayment({
+              razorpay_payment_id: response.razorpay_payment_id,
 
-                paymentDetails: {
-                  razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_order_id: response.razorpay_order_id,
 
-                  razorpay_order_id: response.razorpay_order_id,
+              razorpay_signature: response.razorpay_signature,
 
-                  razorpay_signature: response.razorpay_signature,
-                },
-              },
+              shippingAddress: selectedAddress?._id,
+
+              couponCode: appliedCoupon?.code,
             }).unwrap();
 
-            if (result.success) {
-              dispatch(clearCart());
-
-              dispatch(resetCheckout());
-
-              resetCoupon();
-
-              toast.success("Payment successful!");
-
-              router.push(`/checkout/payment-success?orderId=${orderId}`);
-            } else {
-              throw new Error(result.message || "Failed to update order");
+            if (!result.success) {
+              throw new Error(result.message || "Payment verification failed");
             }
-          } catch (error) {
-            console.error("Failed to update order:", error);
+
+            const createdOrderId = result.data?._id;
+
+            if (!createdOrderId) {
+              throw new Error("Order ID not returned");
+            }
+
+            dispatch(clearCart());
+
+            dispatch(resetCheckout());
+
+            resetCoupon();
+
+            toast.success("Payment successful!");
+
+            router.push(`/checkout/payment-success?orderId=${createdOrderId}`);
+          } catch (error: any) {
+            console.error("PAYMENT VERIFICATION ERROR:", error);
 
             toast.error(
-              "Payment successful, but failed to update order. Please contact support.",
+              error?.data?.message ||
+                error?.message ||
+                "Payment successful, but order confirmation failed.",
             );
           }
         },
 
         prefill: {
-          name: orderData?.data?.user?.name || user?.name || "",
-
-          email: orderData?.data?.user?.email || user?.email || "",
-
-          contact:
-            orderData?.data?.shippingAddress?.phoneNumber ||
-            selectedAddress?.phoneNumber ||
-            "",
+          name: user?.name || "",
+          email: user?.email || "",
+          contact: selectedAddress.phoneNumber || "",
         },
 
         theme: {
@@ -694,6 +608,14 @@ export default function CheckoutPage() {
       }
 
       const razorpay = new window.Razorpay(options);
+
+      razorpay.on("payment.failed", function (response: any) {
+        console.error("❌ RAZORPAY PAYMENT FAILED:", response?.error);
+
+        toast.error(
+          response?.error?.description || "Payment failed. Please try again.",
+        );
+      });
 
       razorpay.open();
     } catch (error) {
