@@ -514,6 +514,14 @@ const Page = () => {
   // RENDER
   // ============================================================
 
+  const maskEmail = (email?: string) => {
+    if (!email || !email.includes("@")) return "—";
+
+    const [username, domain] = email.split("@");
+
+    return `${username.slice(0, 2)}***@${domain}`;
+  };
+  
   return (
     <div className="min-h-screen bg-[#f8fafc]">
       <main className="mx-auto max-w-[1500px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
@@ -962,7 +970,7 @@ const Page = () => {
                               <Mail className="h-3.5 w-3.5 text-slate-400" />
 
                               <span className="max-w-[220px] truncate">
-                                {user.email}
+                                {maskEmail(user.email)}
                               </span>
                             </div>
 
