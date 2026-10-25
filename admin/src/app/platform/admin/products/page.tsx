@@ -40,6 +40,8 @@ type Product = {
     name: string;
   };
 
+  collectionName?: string;
+
   color?: {
     _id: string;
     name: string;
@@ -576,7 +578,12 @@ const Page = () => {
                     <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                       Category
                     </th>
-
+                    <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                      Collection
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                      Occasion
+                    </th>
                     <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                       Price
                     </th>
@@ -655,7 +662,20 @@ const Page = () => {
                             </p>
                           </div>
                         </td>
-
+                        <td className="px-6 py-5">
+                          <div>
+                            <p className="text-sm font-medium text-slate-700">
+                              {product.collectionName || "—"}
+                            </p>
+                          </div>
+                        </td>
+                        <td className="px-6 py-5">
+                          <div>
+                            <p className="text-sm font-medium text-slate-700">
+                              {product.occasion || "—"}
+                            </p>
+                          </div>
+                        </td>
                         {/* PRICE */}
 
                         <td className="whitespace-nowrap px-6 py-5">

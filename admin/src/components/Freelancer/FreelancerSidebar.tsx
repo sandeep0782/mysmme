@@ -18,6 +18,7 @@ import {
   Upload,
   Video,
   X,
+  Ticket,
 } from "lucide-react";
 
 interface FreelancerSidebarProps {
@@ -55,6 +56,11 @@ const navigation = [
     label: "Earnings",
     href: "/platform/freelancer/earnings",
     icon: CircleDollarSign,
+  },
+  {
+    label: "Coupons",
+    href: "/platform/freelancer/coupons",
+    icon: Ticket,
   },
 ];
 
@@ -169,33 +175,8 @@ export default function FreelancerSidebar({
             </Link>
           </div>
 
-          {/* CREATOR CARD */}
-          <div className="px-4 pt-5">
-            <div className="rounded-xl bg-gradient-to-br from-violet-50 to-fuchsia-50 p-4">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 text-sm font-bold text-white">
-                  F
-                </div>
-
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-slate-900">
-                    Creator
-                  </p>
-
-                  <div className="mt-1 flex items-center gap-1.5">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-
-                    <span className="text-[11px] text-slate-500">
-                      Available for work
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
           {/* NAVIGATION */}
-          <nav className="mt-6 flex-1 overflow-y-auto px-3">
+          <nav className="mt-3 flex-1 overflow-y-auto px-3">
             <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">
               Workspace
             </p>
