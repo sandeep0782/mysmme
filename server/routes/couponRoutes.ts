@@ -6,9 +6,11 @@ import {
   getCouponsController,
   getMyCouponController,
   updateCouponController,
+  usersAllCoupons,
   validateCouponController,
 } from "../controllers/couponController";
 import { authenticateUser } from "../middleware/authMiddleware";
+import { requireFreelancer } from "../middleware/freelancerMiddleware";
 
 const router = Router();
 
@@ -22,5 +24,12 @@ router.get(
   "/admin/freelancers",
   authenticateUser,
   getCouponFreelancersController,
+);
+
+router.get(
+  "/users-all-coupons",
+  authenticateUser,
+  requireFreelancer,
+  usersAllCoupons,
 );
 export default router;

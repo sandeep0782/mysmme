@@ -455,13 +455,17 @@ const productSchema = new Schema<IProduct>(
   },
 );
 
-productSchema.pre("validate", function (next) {
-  if (this.title && !this.slug) {
-    this.slug = this.title
+productSchema.pre("validate", function () {
+  if (this.isNew) {
+    const baseSlug = (this.title || "product")
       .toLowerCase()
       .trim()
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/(^-|-$)/g, "");
+
+    const uniqueId = this._id.toString();
+
+    this.slug = `${baseSlug}-${uniqueId}`;
   }
 });
 

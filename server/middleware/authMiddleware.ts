@@ -28,10 +28,6 @@ const authenticateUser = async (
       process.env.JWT_SECRET as string,
     ) as jwt.JwtPayload;
 
-    console.log("JWT DECODED:", decoded);
-    console.log("JWT USER ID:", decoded.userId);
-    console.log("JWT ROLE:", decoded.role);
-
     if (!decoded) {
       return response(res, 401, "Invalid authentication token");
     }

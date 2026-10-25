@@ -339,3 +339,64 @@ export async function getCouponFreelancersController(
     });
   }
 }
+
+export async function usersAllCoupons(req: Request, res: Response) {
+  try {
+    // User ID comes from authenticateUser middleware
+    const userId = req.id;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized user.",
+      });
+    }
+
+    // Get all coupons assigned to logged-in freelancer
+    const coupons = await Coupon.find({
+      assignedFreelancer: userId,
+    })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const now = new Date();
+
+    const formattedCoupons = coupons.map((coupon) => {
+      let status: "active" | "upcoming" | "expired" | "exhausted" | "inactive";
+
+      if (!coupon.isActive) {
+        status = "inactive";
+      } else if (coupon.expiresAt <= now) {
+        status = "expired";
+      } else if (coupon.startsAt > now) {
+        status = "upcoming";
+      } else if (
+        coupon.usageLimit != null &&
+        coupon.usageCount >= coupon.usageLimit
+      ) {
+        status = "exhausted";
+      } else {
+        status = "active";
+      }
+
+      return {
+        ...coupon,
+        status,
+      };
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "User coupons fetched successfully.",
+      total: formattedCoupons.length,
+      data: formattedCoupons,
+    });
+  } catch (error) {
+    console.error("USERS ALL COUPONS ERROR:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Unable to fetch user coupons.",
+    });
+  }
+}
