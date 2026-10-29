@@ -138,11 +138,6 @@ const SareeProducts = ({
 
       const productColor = normalize(saree.color);
 
-      const productCategory =
-        typeof saree.category === "object" && saree.category !== null
-          ? normalize(saree.category.slug ?? saree.category.name)
-          : normalize(saree.category);
-
       const productCollection = normalize(saree.collectionName);
 
       const productOccasion = normalize(saree.occasion);
@@ -175,9 +170,29 @@ const SareeProducts = ({
       // CATEGORY MATCH
       // =========================
 
+      // =========================
+      // CATEGORY MATCH (FIXED)
+      // =========================
+
+      const categoryValues = [
+        saree.category?._id,
+        saree.category?.name,
+        saree.category?.slug,
+        typeof saree.category === "string" ? saree.category : "",
+      ]
+        .filter(Boolean)
+        .map((value) =>
+          String(value)
+            .trim()
+            .toLowerCase()
+            .replace(/[\s_-]+/g, "-"),
+        );
+
       const categoryMatch =
         normalizedCategories.length === 0 ||
-        normalizedCategories.includes(productCategory);
+        normalizedCategories.some((selected) =>
+          categoryValues.includes(selected.replace(/[\s_-]+/g, "-")),
+        );
 
       const collectionMatch =
         normalizedCollections.length === 0 ||

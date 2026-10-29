@@ -48,18 +48,10 @@ const SareeFilters = ({
   const [showAllColors, setShowAllColors] = useState(false);
 
   const discountOptions: FilterOption[] = useMemo(() => {
-    const ranges = [
-      { value: "10", min: 10, max: 19 },
-      { value: "20", min: 20, max: 29 },
-      { value: "30", min: 30, max: 39 },
-      { value: "40", min: 40, max: 49 },
-      { value: "50", min: 50, max: 59 },
-      { value: "60", min: 60, max: 69 },
-      { value: "70", min: 70, max: Infinity },
-    ];
+    const thresholds = [10, 20, 30, 40, 50, 60, 70];
 
-    return ranges
-      .map(({ value, min, max }) => {
+    return thresholds
+      .map((min) => {
         const count = products.filter((product) => {
           const price = Number(product?.price);
           const finalPrice = Number(product?.finalPrice);
@@ -76,11 +68,11 @@ const SareeFilters = ({
 
           const discount = Math.round(((price - finalPrice) / price) * 100);
 
-          return discount >= min && discount <= max;
+          return discount >= min;
         }).length;
 
         return {
-          value,
+          value: String(min),
           count,
         };
       })
