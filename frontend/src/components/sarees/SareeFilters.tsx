@@ -20,6 +20,7 @@ interface FilterOption {
   value: string;
   label?: string;
   count: number;
+  hex?: string;
 }
 
 type FilterSectionKey = "brand" | "color" | "category" | "discount";
@@ -186,6 +187,7 @@ const SareeFilters = ({
       // =========================
       // BRAND
       // =========================
+
       const brand =
         typeof product.brand === "object" && product.brand !== null
           ? product.brand
@@ -212,9 +214,27 @@ const SareeFilters = ({
       }
 
       // =========================
-      // COLOR
+      // COLOR - DYNAMIC HEX
       // =========================
       const color = getDisplayValue(product.color);
+
+      const colorObject =
+        typeof product.color === "object" && product.color !== null
+          ? (product.color as unknown as {
+              hex?: string;
+              hexCode?: string;
+              colorCode?: string;
+            })
+          : null;
+
+      const rawHex =
+        colorObject?.hex ?? colorObject?.hexCode ?? colorObject?.colorCode;
+
+      const hex =
+        typeof rawHex === "string" &&
+        /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(rawHex.trim())
+          ? rawHex.trim()
+          : undefined;
 
       if (color) {
         const key = normalize(color);
@@ -222,10 +242,15 @@ const SareeFilters = ({
 
         if (existing) {
           existing.count += 1;
+
+          if (!existing.hex && hex) {
+            existing.hex = hex;
+          }
         } else {
           colorMap.set(key, {
             value: color,
             count: 1,
+            hex,
           });
         }
       }
@@ -488,7 +513,8 @@ const SareeFilters = ({
                       border-gray-300
                     "
                     style={{
-                      backgroundColor: getColorValue(option.value),
+                      backgroundColor:
+                        option.hex ?? getColorValue(option.value),
                     }}
                     aria-hidden="true"
                   />
