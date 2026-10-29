@@ -12,7 +12,10 @@ import {
   Save,
   XCircle,
 } from "lucide-react";
-
+import { useGetColorsQuery } from "@/store/api/colorApi";
+import { useGetBrandsQuery } from "@/store/api/brandApi";
+import { useGetCategoriesQuery } from "@/store/api/categoryApi";
+import { useGetSeasonsQuery } from "@/store/api/seasonApi";
 import {
   useGetProductByIdQuery,
   useUpdateProductMutation,
@@ -176,6 +179,11 @@ const initialForm: ProductForm = {
   isActive: true,
 };
 
+type Season = {
+  _id: string;
+  name: string;
+};
+
 const getId = (value: unknown): string => {
   if (!value) return "";
 
@@ -204,6 +212,9 @@ const getString = (value: unknown): string => {
 const inputClass =
   "h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-red-500 focus:ring-2 focus:ring-red-100";
 
+const selectClass =
+  "h-11 w-full appearance-none rounded-xl border border-slate-200 bg-white px-4 pr-10 text-sm font-medium text-slate-800 shadow-sm outline-none transition-all duration-200 cursor-pointer hover:border-slate-300 focus:border-red-500 focus:ring-4 focus:ring-red-100 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400";
+
 const textareaClass =
   "w-full rounded-lg border border-slate-200 bg-white px-3 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-red-500 focus:ring-2 focus:ring-red-100";
 
@@ -222,6 +233,34 @@ export default function EditProductPage() {
   } = useGetProductByIdQuery(id, {
     skip: !id,
   });
+
+  const { data: colorsResponse, isLoading: colorsLoading } =
+    useGetColorsQuery();
+
+  const colors = colorsResponse?.data ?? [];
+
+  const { data: brandsResponse, isLoading: brandsLoading } =
+    useGetBrandsQuery();
+
+  const brands = brandsResponse?.data ?? [];
+
+  const { data: categoriesResponse, isLoading: categoriesLoading } =
+    useGetCategoriesQuery();
+
+  const categories = categoriesResponse?.data ?? [];
+
+  const { data: seasonsResponse, isLoading: seasonsLoading } =
+    useGetSeasonsQuery(undefined);
+
+  const seasons: Season[] = Array.isArray(seasonsResponse)
+    ? seasonsResponse
+    : ((
+        seasonsResponse as
+          | {
+              data?: Season[];
+            }
+          | undefined
+      )?.data ?? []);
 
   const [updateProduct, { isLoading: isSaving }] = useUpdateProductMutation();
 
@@ -761,7 +800,7 @@ export default function EditProductPage() {
                       <input
                         value={form.title}
                         onChange={(e) => setValue("title", e.target.value)}
-                        className={inputClass}
+                        className={selectClass}
                       />
                     </Field>
 
@@ -769,7 +808,7 @@ export default function EditProductPage() {
                       <input
                         value={form.slug}
                         onChange={(e) => setValue("slug", e.target.value)}
-                        className={inputClass}
+                        className={selectClass}
                       />
                     </Field>
 
@@ -795,36 +834,72 @@ export default function EditProductPage() {
                   description="Brand, category, colour and collection references."
                 >
                   <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
-                    <Field label="Brand ID" required>
-                      <input
+                    <Field label="Brand Name" required>
+                      <select
                         value={form.brand}
                         onChange={(e) => setValue("brand", e.target.value)}
-                        className={inputClass}
-                      />
+                        className={selectClass}
+                        disabled={brandsLoading}
+                      >
+                        <option value="">Select Brand</option>
+
+                        {brands.map((brand) => (
+                          <option key={brand._id} value={brand._id}>
+                            {brand.name}
+                          </option>
+                        ))}
+                      </select>
                     </Field>
 
-                    <Field label="Category ID" required>
-                      <input
+                    <Field label="Category Name" required>
+                      <select
                         value={form.category}
                         onChange={(e) => setValue("category", e.target.value)}
-                        className={inputClass}
-                      />
+                        className={selectClass}
+                        disabled={categoriesLoading}
+                      >
+                        <option value="">Select Category</option>
+
+                        {categories.map((category) => (
+                          <option key={category._id} value={category._id}>
+                            {category.name}
+                          </option>
+                        ))}
+                      </select>
                     </Field>
 
-                    <Field label="Color ID" required>
-                      <input
+                    <Field label="Color" required>
+                      <select
                         value={form.color}
                         onChange={(e) => setValue("color", e.target.value)}
-                        className={inputClass}
-                      />
+                        className={selectClass}
+                        disabled={colorsLoading}
+                      >
+                        <option value="">Select Color</option>
+
+                        {colors.map((color) => (
+                          <option key={color._id} value={color._id}>
+                            {color.name}
+                          </option>
+                        ))}
+                      </select>
                     </Field>
 
-                    <Field label="Season ID" required>
-                      <input
+                    <Field label="Season Name" required>
+                      <select
                         value={form.season}
                         onChange={(e) => setValue("season", e.target.value)}
-                        className={inputClass}
-                      />
+                        className={selectClass}
+                        disabled={seasonsLoading}
+                      >
+                        <option value="">Select Season</option>
+
+                        {seasons.map((season) => (
+                          <option key={season._id} value={season._id}>
+                            {season.name}
+                          </option>
+                        ))}
+                      </select>
                     </Field>
 
                     <TextField
@@ -1275,7 +1350,7 @@ export default function EditProductPage() {
                       onChange={(e) =>
                         setValue("publishStatus", e.target.value)
                       }
-                      className={inputClass}
+                      className={selectClass}
                     >
                       <option value="draft">Draft</option>
 
@@ -1435,7 +1510,7 @@ function TextField({
       <input
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className={inputClass}
+        className={selectClass}
       />
     </Field>
   );
@@ -1462,7 +1537,7 @@ function NumberField({
         step="any"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className={inputClass}
+        className={selectClass}
       />
     </Field>
   );

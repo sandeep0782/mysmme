@@ -376,11 +376,10 @@ export const getAllProducts = async (req: Request, res: Response) => {
   try {
     const products = await Product.find({
       isActive: true,
-      
     })
       .sort({ createdAt: -1 })
       .populate("brand", "name slug")
-      .populate("color", "name slug")
+      .populate("color", "name slug hexCode")
       .populate("category", "name slug")
       .populate("season", "name slug");
 
@@ -1010,7 +1009,7 @@ export const updateProduct = async (req: Request, res: Response) => {
       },
       {
         path: "color",
-        select: "name slug",
+        select: "name slug hexCode",
       },
       {
         path: "category",
@@ -1113,7 +1112,7 @@ export const getProductById = async (req: Request, res: Response) => {
   try {
     const product = await Product.findById(req.params.id)
       .populate("brand", "name slug")
-      .populate("color", "name slug")
+      .populate("color", "name slug hexCode")
       .populate("category", "name slug")
       .populate("season", "name slug");
 
@@ -1141,7 +1140,7 @@ export const getProductBySlug = async (req: Request, res: Response) => {
       .populate("category", "name slug")
       .populate("brand", "name slug")
       .populate("season", "name slug")
-      .populate("color", "name slug")
+      .populate("color", "name slug hexCode")
       .populate("seller", "name");
 
     if (!product) {
@@ -1193,7 +1192,7 @@ export const getProductsBySeller = async (req: Request, res: Response) => {
     })
       .sort({ createdAt: -1 })
       .populate("brand", "name slug")
-      .populate("color", "name slug")
+      .populate("color", "name slug hexCode")
       .populate("category", "name slug")
       .populate("season", "name slug");
 
