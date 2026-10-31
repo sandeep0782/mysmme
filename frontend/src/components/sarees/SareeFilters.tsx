@@ -12,6 +12,7 @@ interface SareeFiltersProps {
   selectedColor: string[];
   selectedCategory: string[];
   selectedDiscount: string[];
+  showCategory?: boolean;
 
   onFilterChange: (section: string, item: string) => void;
 }
@@ -31,6 +32,7 @@ const SareeFilters = ({
   selectedColor,
   selectedCategory,
   selectedDiscount,
+  showCategory = true,
   onFilterChange,
 }: SareeFiltersProps) => {
   const [activeSearch, setActiveSearch] = useState<FilterSectionKey | null>(
@@ -634,11 +636,13 @@ const SareeFilters = ({
         values={filters.category}
       />
 
-      <FilterSection
-        title="DISCOUNT"
-        section="discount"
-        values={discountOptions}
-      />
+      {showCategory && (
+        <FilterSection
+          title="DISCOUNT"
+          section="discount"
+          values={discountOptions}
+        />
+      )}
     </div>
   );
 };

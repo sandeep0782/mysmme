@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
+import type { ComponentProps } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-
+import SareeCard from "../../../components/sarees/SareeCard";
+import CategoryFilters from "@/components/category/CategoryFilters";
 export const dynamic = "force-dynamic";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://mysmme.com";
@@ -30,10 +32,28 @@ type Category = {
 type Product = {
   _id?: string;
   name?: string;
+
+  category?:
+    | string
+    | {
+        _id: string;
+        name?: string;
+        slug?: string;
+      };
+  brand?: string | { _id?: string; name?: string; slug?: string };
+  color?:
+    | string
+    | {
+        _id?: string;
+        name?: string;
+        slug?: string;
+      };
+  title?: string;
   slug?: string;
   image?: string;
   images?: string[];
   price?: number;
+  finalPrice?: number;
   salePrice?: number;
   updatedAt?: string;
 };
@@ -121,11 +141,25 @@ async function fetchCategoryProducts(slug: string): Promise<Product[]> {
 
 export async function generateMetadata({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{
+    page?: string | string[];
+    brand?: string | string[];
+    color?: string | string[];
+    discount?: string | string[];
+  }>;
 }): Promise<Metadata> {
   const { slug } = await params;
+  const query = await searchParams;
+  const { page } = query;
+  const hasFilters = ["brand", "color", "discount"].some((key) => key in query);
+  const pageValue = Array.isArray(page) ? page[0] : page;
+  const parsedPage = Number(pageValue ?? "1");
 
+  const currentPage =
+    Number.isSafeInteger(parsedPage) && parsedPage > 1 ? parsedPage : 1;
   const category = await fetchCategoryBySlug(slug);
 
   if (!category) {
@@ -141,7 +175,9 @@ export async function generateMetadata({
 
   const categoryName = category.name.trim();
 
-  const title = `${categoryName} Sarees | Shop ${categoryName} Saree Collection`;
+  const title =
+    `${categoryName} Sarees | Shop ${categoryName} Saree Collection` +
+    (currentPage > 1 ? ` | Page ${currentPage}` : "");
 
   const fallbackDescription =
     `Explore beautiful ${categoryName} sarees at MYSMME. ` +
@@ -155,8 +191,13 @@ export async function generateMetadata({
       ? category.description.trim().slice(0, 157) + "..."
       : fallbackDescription);
 
-  const canonicalUrl = `${SITE_URL}/category/${encodeURIComponent(category.slug)}`;
+  const baseUrl = `${SITE_URL}/category/${encodeURIComponent(category.slug)}`;
 
+  const canonicalUrl = hasFilters
+    ? baseUrl
+    : currentPage === 1
+      ? baseUrl
+      : `${baseUrl}?page=${currentPage}`;
   return {
     title,
 
@@ -210,11 +251,11 @@ export async function generateMetadata({
     },
 
     robots: {
-      index: true,
+      index: !hasFilters,
       follow: true,
 
       googleBot: {
-        index: true,
+        index: !hasFilters,
         follow: true,
       },
     },
@@ -237,12 +278,12 @@ function CategoryStructuredData({
   const categoryUrl = `${SITE_URL}/category/${encodeURIComponent(category.slug)}`;
 
   const productItems = products
-    .filter((product) => product.slug && product.name)
+    .filter((product) => product.slug && product.title)
     .slice(0, 50)
     .map((product, index) => ({
       "@type": "ListItem",
       position: index + 1,
-      name: product.name,
+      name: product.title,
       url: `${SITE_URL}/sarees/${encodeURIComponent(product.slug as string)}`,
     }));
 
@@ -344,10 +385,35 @@ function CategoryStructuredData({
 
 export default async function CategoryDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{
+    page?: string | string[];
+    brand?: string | string[];
+    color?: string | string[];
+    discount?: string | string[];
+  }>;
 }) {
   const { slug } = await params;
+  const query = await searchParams;
+  const { page } = query;
+  const toArray = (value?: string | string[]): string[] =>
+    (Array.isArray(value) ? value : value ? [value] : [])
+      .map((item) => item.trim().toLowerCase())
+      .filter(Boolean);
+
+  const selectedBrands = toArray(query.brand);
+  const selectedColors = toArray(query.color);
+
+  const selectedDiscounts = toArray(query.discount)
+    .map(Number)
+    .filter((value) => Number.isFinite(value) && value > 0);
+
+  const pageValue = Array.isArray(page) ? page[0] : page;
+  const parsedPage = Number(pageValue ?? "1");
+  const requestedPage =
+    Number.isSafeInteger(parsedPage) && parsedPage > 0 ? parsedPage : 1;
 
   const category = await fetchCategoryBySlug(slug);
 
@@ -360,493 +426,411 @@ export default async function CategoryDetailPage({
 
   const products = await fetchCategoryProducts(category.slug);
 
-  const visibleProducts = products
-    .filter((product) => product.slug && product.name)
-    .slice(0, 12);
+  const categoryProducts = products.filter((product) => {
+    const productCategoryId =
+      typeof product.category === "string"
+        ? product.category
+        : product.category?._id;
+
+    return String(productCategoryId ?? "") === String(category._id);
+  });
+
+  const ITEMS_PER_PAGE = 15;
+
+  const getValue = (value: unknown): string => {
+    if (typeof value === "string") {
+      return value.trim().toLowerCase();
+    }
+
+    if (value && typeof value === "object") {
+      const obj = value as {
+        name?: string;
+        slug?: string;
+      };
+
+      return String(obj.slug ?? obj.name ?? "")
+        .trim()
+        .toLowerCase();
+    }
+
+    return "";
+  };
+
+  const validProducts = categoryProducts.filter((product) => {
+    if (!product.slug || !product.title) {
+      return false;
+    }
+
+    // BRAND
+    if (selectedBrands.length > 0) {
+      const brand = getValue(product.brand);
+
+      if (!selectedBrands.includes(brand)) {
+        return false;
+      }
+    }
+
+    // COLOR
+    if (selectedColors.length > 0) {
+      const color =
+        typeof product.color === "object" && product.color !== null
+          ? String(product.color.name ?? "")
+              .trim()
+              .toLowerCase()
+          : getValue(product.color);
+
+      if (!selectedColors.includes(color)) {
+        return false;
+      }
+    }
+
+    // DISCOUNT
+    if (selectedDiscounts.length > 0) {
+      const price = Number(product.price ?? 0);
+      const finalPrice = Number(product.finalPrice ?? 0);
+
+      const discount =
+        price > 0 && finalPrice > 0 && finalPrice < price
+          ? Math.round(((price - finalPrice) / price) * 100)
+          : 0;
+
+      // Any selected discount threshold can match
+      if (!selectedDiscounts.some((min) => discount >= min)) {
+        return false;
+      }
+    }
+
+    return true;
+  });
+
+  const totalProducts = validProducts.length;
+
+  const totalPages = Math.ceil(totalProducts / ITEMS_PER_PAGE);
+
+  if (requestedPage > Math.max(1, totalPages)) {
+    notFound();
+  }
+
+  const currentPage = requestedPage;
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+
+  const visibleProducts = validProducts.slice(
+    startIndex,
+    startIndex + ITEMS_PER_PAGE,
+  );
 
   return (
     <>
-      <CategoryStructuredData category={category} products={products} />
+      <CategoryStructuredData category={category} products={visibleProducts} />
 
-      <main className="overflow-hidden bg-white">
-        {/* ====================================================
-            BREADCRUMB
-        ==================================================== */}
-
+      <main className="min-h-screen bg-white text-gray-900">
+        {/* Breadcrumb */}
         <nav
           aria-label="Breadcrumb"
-          className="container mx-auto px-4 pb-4 pt-6"
+          className="container mx-auto px-4 pb-3 pt-5"
         >
-          <ol className="flex flex-wrap items-center gap-2 text-sm text-gray-500">
+          <ol className="flex flex-wrap items-center gap-2 text-xs text-gray-500 sm:text-sm">
             <li>
-              <Link href="/" className="transition-colors hover:text-red-500">
+              <Link href="/" className="hover:text-red-600">
                 Home
               </Link>
             </li>
-
-            <li aria-hidden="true" className="text-gray-300">
-              /
-            </li>
-
+            <li aria-hidden="true">/</li>
             <li>
-              <Link
-                href="/category"
-                className="transition-colors hover:text-red-500"
-              >
+              <Link href="/category" className="hover:text-red-600">
                 Saree Categories
               </Link>
             </li>
-
-            <li aria-hidden="true" className="text-gray-300">
-              /
-            </li>
-
-            <li aria-current="page" className="font-medium text-gray-800">
+            <li aria-hidden="true">/</li>
+            <li aria-current="page" className="font-medium text-gray-900">
               {categoryName} Sarees
             </li>
           </ol>
         </nav>
 
-        {/* ====================================================
-            PREMIUM MYSMME HERO
-        ==================================================== */}
-
-        <section className="container mx-auto px-4 pb-16 pt-5 sm:pb-20 sm:pt-8">
-          <div className="grid overflow-hidden rounded-3xl bg-gray-50 lg:min-h-[650px] lg:grid-cols-[0.9fr_1.1fr]">
-            {/* CONTENT */}
-
-            <div className="order-2 flex items-center lg:order-1">
-              <div className="w-full px-6 py-12 sm:px-10 sm:py-16 lg:px-14 xl:px-20">
-                <div className="flex items-center gap-3">
-                  <span className="h-2 w-2 rounded-full bg-red-500" />
-
-                  <p className="text-xs font-semibold uppercase tracking-[0.28em] text-red-500 sm:text-sm">
-                    Saree Collection
-                  </p>
-                </div>
-
-                <h1 className="mt-5 max-w-2xl text-4xl font-bold tracking-tight text-gray-950 sm:text-5xl lg:text-6xl xl:text-7xl">
-                  {categoryName} Sarees
-                </h1>
-
-                <div className="mt-6 h-1 w-16 rounded-full bg-red-500" />
-
-                <p className="mt-7 max-w-xl text-base leading-8 text-gray-600 sm:text-lg">
-                  {category.shortDescription?.trim() ||
-                    `Explore our beautiful collection of ${categoryLower} sarees, featuring elegant designs, beautiful colours and timeless Indian craftsmanship.`}
-                </p>
-
-                <div className="mt-9 flex flex-wrap items-center gap-4">
-                  <Link
-                    href={`/sarees?category=${encodeURIComponent(
-                      category.slug,
-                    )}`}
-                    className="inline-flex items-center justify-center rounded-full bg-red-500 px-7 py-3.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-red-600 hover:shadow-md"
-                  >
-                    Shop {categoryName} Sarees
-                  </Link>
-
-                  <Link
-                    href="/category"
-                    className="inline-flex items-center justify-center gap-2 rounded-full border border-gray-300 bg-white px-7 py-3.5 text-sm font-semibold text-gray-800 transition-all hover:border-gray-400 hover:bg-gray-100"
-                  >
-                    Explore Categories
-                    <span aria-hidden="true">→</span>
-                  </Link>
-                </div>
-
-                {products.length > 0 && (
-                  <div className="mt-10 flex items-center gap-3 border-t border-gray-200 pt-6">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-50 text-sm font-bold text-red-500">
-                      {products.length}
-                    </div>
-
-                    <div>
-                      <p className="text-sm font-semibold text-gray-900">
-                        {products.length === 1
-                          ? "Design Available"
-                          : "Designs Available"}
-                      </p>
-
-                      <p className="mt-0.5 text-xs text-gray-500">
-                        Explore the collection
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </div>
+        {/* Compact category introduction */}
+        <section className="container mx-auto px-4 pb-7 pt-4 sm:pb-9">
+          <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+            <div className="max-w-3xl">
+              <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-red-600">
+                MYSMME / Saree Collections
+              </p>
+              <h1 className="text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
+                {categoryName} Sarees
+              </h1>
+              <p className="mt-3 max-w-2xl text-sm leading-7 text-gray-600 sm:text-base">
+                {category.shortDescription?.trim() ||
+                  `Explore ${categoryLower} sarees at MYSMME and discover styles, colours and fabrics for your wardrobe.`}
+              </p>
+              <p className="mt-3 text-sm font-medium text-gray-500">
+                {totalProducts} {totalProducts === 1 ? "design" : "designs"}{" "}
+                available
+              </p>
             </div>
-
-            {/* IMAGE */}
-
-            <div className="order-1 p-3 sm:p-4 lg:order-2">
-              <div className="relative min-h-[480px] overflow-hidden rounded-[1.4rem] bg-gray-100 sm:min-h-[600px] lg:h-full lg:min-h-[620px]">
-                {category.image ? (
-                  <Image
-                    src={category.image}
-                    alt={`${categoryName} sarees collection`}
-                    fill
-                    priority
-                    sizes="(max-width: 1024px) 100vw, 55vw"
-                    className="object-cover transition-transform duration-700 hover:scale-[1.015]"
-                  />
-                ) : (
-                  <div className="flex h-full min-h-[480px] items-center justify-center">
-                    <span className="text-sm text-gray-400">
-                      No Image Available
-                    </span>
-                  </div>
-                )}
-
-                <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent" />
-
-                <div className="absolute bottom-5 left-5 rounded-full bg-white/95 px-4 py-2 shadow-sm backdrop-blur-sm sm:bottom-7 sm:left-7">
-                  <p className="text-xs font-semibold text-gray-800">
-                    MYSMME Saree Collection
-                  </p>
-                </div>
+            {category.image && (
+              <div className="relative hidden h-40 w-56 shrink-0 overflow-hidden rounded-2xl bg-gray-100 md:block lg:h-48 lg:w-72">
+                <Image
+                  src={category.image}
+                  alt={`${categoryName} saree collection`}
+                  fill
+                  priority
+                  sizes="(max-width: 1024px) 224px, 288px"
+                  className="object-cover"
+                />
               </div>
-            </div>
+            )}
           </div>
         </section>
 
-        {/* ====================================================
-            ABOUT COLLECTION
-        ==================================================== */}
-
-        <section className="border-y border-gray-100 bg-white">
-          <div className="container mx-auto max-w-6xl px-4 py-16 sm:py-20 lg:py-24">
-            <div className="grid gap-10 lg:grid-cols-[0.32fr_0.68fr] lg:gap-16">
+        {/* Product listing */}
+        <section
+          id="shop-collection"
+          aria-labelledby="category-products-heading"
+          className="border-t border-gray-100 bg-gray-50/60"
+        >
+          <div className="mx-auto w-full max-w-[1600px] px-4 py-8 sm:px-6 lg:px-8 sm:py-10">
+            <div className="mb-7 flex flex-wrap items-end justify-between gap-3">
               <div>
-                <div className="flex items-center gap-3">
-                  <span className="h-2 w-2 rounded-full bg-red-500" />
-
-                  <p className="text-xs font-semibold uppercase tracking-[0.25em] text-red-500">
-                    About the Collection
-                  </p>
-                </div>
-
-                <p className="mt-5 max-w-sm text-sm leading-7 text-gray-500">
-                  Discover the character, style and timeless appeal behind the{" "}
-                  {categoryLower} saree collection.
+                <h2
+                  id="category-products-heading"
+                  className="text-xl font-bold tracking-tight sm:text-2xl"
+                >
+                  Shop {categoryName} Sarees
+                </h2>
+                <p className="mt-1 text-sm text-gray-500">
+                  {totalProducts === 0
+                    ? "No designs currently available"
+                    : `Showing ${startIndex + 1}–${Math.min(startIndex + visibleProducts.length, totalProducts)} of ${totalProducts} designs`}
                 </p>
               </div>
-
-              <div>
-                <h2 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
-                  Discover {categoryName} Sarees
-                </h2>
-
-                <div className="mt-5 h-1 w-14 rounded-full bg-red-500" />
-
-                <div className="mt-7 max-w-3xl text-base leading-8 text-gray-600">
-                  {category.description?.trim() ? (
-                    <p>{category.description}</p>
-                  ) : (
-                    <div className="space-y-6">
-                      <p>
-                        {categoryName} sarees are a beautiful choice for women
-                        looking to add elegance and traditional character to
-                        their wardrobe. Depending on the design and fabric, they
-                        can be styled for weddings, festivals, family
-                        celebrations, formal occasions and everyday wear.
-                      </p>
-
-                      <p>
-                        Each saree collection can have its own distinctive
-                        colours, patterns, textures and styling possibilities.
-                        Exploring a dedicated collection makes it easier to
-                        compare designs and find a saree that suits your
-                        occasion and personal style.
-                      </p>
-
-                      <p>
-                        Browse the {categoryLower} sarees available at MYSMME
-                        and discover designs selected for modern wardrobes while
-                        celebrating the timeless appeal of Indian sarees.
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* ====================================================
-            PRODUCTS
-        ==================================================== */}
-
-        {visibleProducts.length > 0 && (
-          <section
-            aria-labelledby="category-products-heading"
-            className="bg-gray-50"
-          >
-            <div className="container mx-auto px-4 py-16 sm:py-20 lg:py-24">
-              <header className="mb-10 flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
-                <div>
-                  <div className="flex items-center gap-3">
-                    <span className="h-2 w-2 rounded-full bg-red-500" />
-
-                    <p className="text-xs font-semibold uppercase tracking-[0.25em] text-red-500">
-                      Shop the Collection
-                    </p>
-                  </div>
-
-                  <h2
-                    id="category-products-heading"
-                    className="mt-4 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl"
-                  >
-                    {categoryName} Sarees Collection
-                  </h2>
-
-                  <p className="mt-3 max-w-2xl text-sm leading-7 text-gray-500 sm:text-base">
-                    Explore available {categoryLower} sarees from our
-                    collection.
-                  </p>
-                </div>
-
-                <Link
-                  href={`/sarees?category=${encodeURIComponent(category.slug)}`}
-                  className="inline-flex w-fit items-center gap-2 text-sm font-semibold text-red-500 transition-colors hover:text-red-600"
-                >
-                  View All
-                  <span aria-hidden="true">→</span>
-                </Link>
-              </header>
-
-              <div className="grid grid-cols-2 gap-x-3 gap-y-8 sm:gap-x-5 sm:gap-y-10 md:grid-cols-3 lg:grid-cols-4">
-                {visibleProducts.map((product) => {
-                  const productImage = product.images?.[0] || product.image;
-
-                  const displayedPrice =
-                    product.salePrice !== undefined
-                      ? product.salePrice
-                      : product.price;
-
-                  return (
-                    <Link
-                      key={product._id || product.slug}
-                      href={`/sarees/${encodeURIComponent(
-                        product.slug as string,
-                      )}`}
-                      className="group block"
-                    >
-                      <article>
-                        <div className="relative aspect-[3/4] overflow-hidden rounded-2xl bg-gray-100">
-                          {productImage ? (
-                            <Image
-                              src={productImage}
-                              alt={`${product.name} - ${categoryName} saree`}
-                              fill
-                              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-                              className="object-cover transition-transform duration-500 group-hover:scale-[1.025]"
-                            />
-                          ) : (
-                            <div className="flex h-full items-center justify-center text-sm text-gray-400">
-                              No Image
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="px-1 pt-4">
-                          <p className="text-[11px] font-semibold uppercase tracking-wider text-red-500">
-                            MYSMME
-                          </p>
-
-                          <h3 className="mt-1.5 line-clamp-2 text-sm font-semibold leading-5 text-gray-800 transition-colors group-hover:text-red-500 sm:text-base">
-                            {product.name}
-                          </h3>
-
-                          {displayedPrice !== undefined && (
-                            <p className="mt-2 text-sm font-bold text-gray-900 sm:text-base">
-                              ₹{displayedPrice.toLocaleString("en-IN")}
-                            </p>
-                          )}
-                        </div>
-                      </article>
-                    </Link>
-                  );
-                })}
-              </div>
-
-              <div className="mt-12 text-center">
-                <Link
-                  href={`/sarees?category=${encodeURIComponent(category.slug)}`}
-                  className="inline-flex items-center justify-center rounded-full bg-red-500 px-8 py-3.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-red-600 hover:shadow-md"
-                >
-                  View All {categoryName} Sarees
-                </Link>
-              </div>
-            </div>
-          </section>
-        )}
-
-        {/* ====================================================
-            MYSMME BRAND STATEMENT
-        ==================================================== */}
-
-        <section className="border-y border-red-100 bg-red-50">
-          <div className="container mx-auto max-w-5xl px-4 py-16 text-center sm:py-20 lg:py-24">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-sm">
-              <span className="h-3 w-3 rounded-full bg-red-500" />
-            </div>
-
-            <p className="mt-6 text-xs font-semibold uppercase tracking-[0.3em] text-red-500">
-              MYSMME
-            </p>
-
-            <h2 className="mx-auto mt-4 max-w-3xl text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl lg:text-5xl">
-              Sarees for every beautiful moment.
-            </h2>
-
-            <p className="mx-auto mt-5 max-w-2xl text-sm leading-7 text-gray-600 sm:text-base">
-              Discover sarees for weddings, celebrations, festivals, workwear
-              and everyday elegance — thoughtfully brought together at MYSMME.
-            </p>
-          </div>
-        </section>
-
-        {/* ====================================================
-            FAQ
-        ==================================================== */}
-
-        <section className="bg-white">
-          <div className="container mx-auto max-w-6xl px-4 py-16 sm:py-20 lg:py-24">
-            <div className="grid gap-12 lg:grid-cols-[0.35fr_0.65fr] lg:gap-16">
-              <header>
-                <div className="flex items-center gap-3">
-                  <span className="h-2 w-2 rounded-full bg-red-500" />
-
-                  <p className="text-xs font-semibold uppercase tracking-[0.25em] text-red-500">
-                    Helpful Information
-                  </p>
-                </div>
-
-                <h2 className="mt-4 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
-                  Frequently Asked Questions
-                </h2>
-
-                <p className="mt-4 max-w-sm text-sm leading-7 text-gray-500">
-                  Helpful information about {categoryLower} sarees, styling and
-                  choosing the right piece.
-                </p>
-              </header>
-
-              <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white">
-                {/* FAQ 1 */}
-
-                <details className="group border-b border-gray-200 px-5 py-1 last:border-b-0 sm:px-6">
-                  <summary className="flex cursor-pointer list-none items-center justify-between gap-5 py-5 font-semibold text-gray-900">
-                    <span>What are {categoryName} sarees?</span>
-
-                    <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-red-50 text-lg font-medium text-red-500 transition-transform duration-300 group-open:rotate-45">
-                      +
-                    </span>
-                  </summary>
-
-                  <div className="max-w-3xl pb-6 pr-10 text-sm leading-7 text-gray-600 sm:text-base">
-                    {category.description?.trim() ||
-                      `${categoryName} sarees are a category of Indian sarees recognised for their particular style, fabric, design or traditional character. Explore the collection above to discover the designs available at MYSMME.`}
-                  </div>
-                </details>
-
-                {/* FAQ 2 */}
-
-                <details className="group border-b border-gray-200 px-5 py-1 last:border-b-0 sm:px-6">
-                  <summary className="flex cursor-pointer list-none items-center justify-between gap-5 py-5 font-semibold text-gray-900">
-                    <span>When should I wear {categoryLower} sarees?</span>
-
-                    <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-red-50 text-lg font-medium text-red-500 transition-transform duration-300 group-open:rotate-45">
-                      +
-                    </span>
-                  </summary>
-
-                  <div className="max-w-3xl pb-6 pr-10 text-sm leading-7 text-gray-600 sm:text-base">
-                    {categoryName} sarees can be suitable for different
-                    occasions depending on their fabric, colour, design and
-                    embellishment. They can be styled for weddings, festivals,
-                    celebrations, formal events or everyday occasions depending
-                    on the specific fabric and styling of the piece.
-                  </div>
-                </details>
-
-                {/* FAQ 3 */}
-
-                <details className="group border-b border-gray-200 px-5 py-1 last:border-b-0 sm:px-6">
-                  <summary className="flex cursor-pointer list-none items-center justify-between gap-5 py-5 font-semibold text-gray-900">
-                    <span>
-                      What fabric should I choose for {categoryLower} sarees?
-                    </span>
-
-                    <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-red-50 text-lg font-medium text-red-500 transition-transform duration-300 group-open:rotate-45">
-                      +
-                    </span>
-                  </summary>
-
-                  <div className="max-w-3xl pb-6 pr-10 text-sm leading-7 text-gray-600 sm:text-base">
-                    Fabric choice depends on the occasion and comfort you need.
-                    Cotton and linen work well for breathability and daily wear,
-                    while silk and georgette can suit more formal or festive
-                    settings. Check each product&apos;s fabric details to find
-                    the right match.
-                  </div>
-                </details>
-
-                {/* FAQ 4 */}
-
-                <details className="group px-5 py-1 sm:px-6">
-                  <summary className="flex cursor-pointer list-none items-center justify-between gap-5 py-5 font-semibold text-gray-900">
-                    <span>
-                      Where can I shop for {categoryLower} sarees online?
-                    </span>
-
-                    <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-red-50 text-lg font-medium text-red-500 transition-transform duration-300 group-open:rotate-45">
-                      +
-                    </span>
-                  </summary>
-
-                  <div className="max-w-3xl pb-6 pr-10 text-sm leading-7 text-gray-600 sm:text-base">
-                    You can explore the {categoryLower} saree collection
-                    available at MYSMME using the products listed on this page
-                    and browse the full collection to compare available designs.
-                  </div>
-                </details>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* ====================================================
-            BOTTOM CTA
-        ==================================================== */}
-
-        <section className="border-t border-gray-100 bg-gray-50">
-          <div className="container mx-auto max-w-5xl px-4 py-16 text-center sm:py-20">
-            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-red-500">
-              Discover More
-            </p>
-
-            <h2 className="mt-4 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
-              Explore More Saree Collections
-            </h2>
-
-            <p className="mx-auto mt-4 max-w-xl text-sm leading-7 text-gray-600 sm:text-base">
-              Discover more saree styles, fabrics and traditional collections
-              from MYSMME.
-            </p>
-
-            <div className="mt-8 flex flex-wrap justify-center gap-4">
               <Link
                 href="/category"
-                className="inline-flex items-center justify-center rounded-full bg-red-500 px-8 py-3.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-red-600 hover:shadow-md"
+                className="text-sm font-semibold text-red-600 hover:text-red-700"
+              >
+                Explore other categories →
+              </Link>
+            </div>
+            <div className="grid grid-cols-1 gap-5 lg:grid-cols-[240px_minmax(0,1fr)] xl:gap-6">
+              <aside className="hidden lg:block">
+                <div className="sticky top-24">
+                  <CategoryFilters
+                    products={categoryProducts.filter((p) => p.slug && p.title)}
+                  />
+                </div>
+              </aside>
+
+              <div className="min-w-0">
+                {visibleProducts.length > 0 ? (
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+                    {visibleProducts.map((product) => (
+                      <SareeCard
+                        key={product._id || product.slug}
+                        saree={
+                          product as ComponentProps<typeof SareeCard>["saree"]
+                        }
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-gray-200 bg-white px-5 py-14 text-center">
+                    <p className="font-medium text-gray-800">
+                      No sarees are available in this collection right now.
+                    </p>
+                    <Link
+                      href="/category"
+                      className="mt-3 inline-block text-sm font-semibold text-red-600"
+                    >
+                      Browse other categories
+                    </Link>
+                  </div>
+                )}
+
+                {totalPages > 1 && (
+                  <nav
+                    aria-label="Product pagination"
+                    className="mt-10 flex flex-wrap items-center justify-center gap-2"
+                  >
+                    {Array.from({ length: totalPages }, (_, index) => {
+                      const pageNumber = index + 1;
+                      const params = new URLSearchParams();
+
+                      selectedBrands.forEach((brand) =>
+                        params.append("brand", brand),
+                      );
+                      selectedColors.forEach((color) =>
+                        params.append("color", color),
+                      );
+                      selectedDiscounts.forEach((discount) =>
+                        params.append("discount", String(discount)),
+                      );
+
+                      if (pageNumber > 1) {
+                        params.set("page", String(pageNumber));
+                      }
+
+                      const queryString = params.toString();
+
+                      const basePath = `/category/${encodeURIComponent(category.slug)}`;
+
+                      const href = queryString
+                        ? `${basePath}?${queryString}`
+                        : basePath;
+                      return (
+                        <Link
+                          key={pageNumber}
+                          href={href}
+                          aria-current={
+                            pageNumber === currentPage ? "page" : undefined
+                          }
+                          className={`inline-flex min-h-10 min-w-10 items-center justify-center rounded-lg border px-3 text-sm font-semibold transition-colors ${pageNumber === currentPage ? "border-red-600 bg-red-600 text-white" : "border-gray-200 bg-white text-gray-700 hover:border-red-500 hover:text-red-600"}`}
+                        >
+                          {pageNumber}
+                        </Link>
+                      );
+                    })}
+                  </nav>
+                )}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* SEO content: below products, available to readers and crawlers */}
+        <section
+          aria-labelledby="about-category-heading"
+          className="border-t border-gray-100 bg-white"
+        >
+          <div className="container mx-auto max-w-5xl px-4 py-12 sm:py-16">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-red-600">
+              About the Collection
+            </p>
+            <h2
+              id="about-category-heading"
+              className="mt-3 text-2xl font-bold tracking-tight sm:text-3xl"
+            >
+              Discover {categoryName} Sarees
+            </h2>
+            <div className="mt-5 max-w-4xl text-sm leading-8 text-gray-600 sm:text-base">
+              {category.description?.trim() ? (
+                <p className="whitespace-pre-line">{category.description}</p>
+              ) : (
+                <p>
+                  Browse {categoryLower} sarees at MYSMME. Compare fabrics,
+                  colours and prints to find designs that suit your comfort,
+                  style and occasion. Check individual product pages for fabric
+                  details and care instructions.
+                </p>
+              )}
+            </div>
+          </div>
+        </section>
+
+        {/* FAQ: native details preserve server-rendered content */}
+        <section
+          aria-labelledby="category-faq-heading"
+          className="border-t border-gray-100 bg-gray-50/60"
+        >
+          <div className="container mx-auto max-w-5xl px-4 py-12 sm:py-16">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-red-600">
+              Helpful Information
+            </p>
+            <h2
+              id="category-faq-heading"
+              className="mt-3 text-2xl font-bold tracking-tight sm:text-3xl"
+            >
+              Frequently Asked Questions
+            </h2>
+            <div className="mt-7 overflow-hidden rounded-2xl border border-gray-200 bg-white">
+              <details className="group border-b border-gray-200 px-5 py-1 sm:px-6">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 py-5 text-sm font-semibold text-gray-900 sm:text-base">
+                  <span>What are {categoryName} sarees?</span>
+                  <span
+                    aria-hidden="true"
+                    className="text-xl text-red-600 group-open:rotate-45"
+                  >
+                    +
+                  </span>
+                </summary>
+                <p className="pb-5 text-sm leading-7 text-gray-600">
+                  {category.description?.trim() ||
+                    `${categoryName} sarees are grouped by their style, fabric or intended use. Explore the available products and check individual product details to choose the right saree.`}
+                </p>
+              </details>
+              <details className="group border-b border-gray-200 px-5 py-1 sm:px-6">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 py-5 text-sm font-semibold text-gray-900 sm:text-base">
+                  <span>When can I wear {categoryLower} sarees?</span>
+                  <span
+                    aria-hidden="true"
+                    className="text-xl text-red-600 group-open:rotate-45"
+                  >
+                    +
+                  </span>
+                </summary>
+                <p className="pb-5 text-sm leading-7 text-gray-600">
+                  The right occasion depends on the fabric and design. Check
+                  each saree’s material, pattern and styling details to decide
+                  whether it suits daily use, work or a special occasion.
+                </p>
+              </details>
+              <details className="group border-b border-gray-200 px-5 py-1 sm:px-6">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 py-5 text-sm font-semibold text-gray-900 sm:text-base">
+                  <span>How do I choose the right fabric?</span>
+                  <span
+                    aria-hidden="true"
+                    className="text-xl text-red-600 group-open:rotate-45"
+                  >
+                    +
+                  </span>
+                </summary>
+                <p className="pb-5 text-sm leading-7 text-gray-600">
+                  Consider comfort, climate, drape and care requirements. Refer
+                  to the fabric composition and care instructions on each
+                  product page before buying.
+                </p>
+              </details>
+              <details className="group px-5 py-1 sm:px-6">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 py-5 text-sm font-semibold text-gray-900 sm:text-base">
+                  <span>
+                    Where can I shop for {categoryLower} sarees online?
+                  </span>
+                  <span
+                    aria-hidden="true"
+                    className="text-xl text-red-600 group-open:rotate-45"
+                  >
+                    +
+                  </span>
+                </summary>
+                <p className="pb-5 text-sm leading-7 text-gray-600">
+                  You can browse available {categoryLower} sarees on this MYSMME
+                  category page, compare designs and open each product for more
+                  information.
+                </p>
+              </details>
+            </div>
+          </div>
+        </section>
+
+        {/* Minimal discovery links */}
+        <section className="border-t border-gray-100 bg-white">
+          <div className="container mx-auto flex flex-col gap-4 px-4 py-10 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="text-lg font-bold text-gray-900">
+                Explore more saree collections
+              </h2>
+              <p className="mt-1 text-sm text-gray-500">
+                Find more styles for your wardrobe at MYSMME.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <Link
+                href="/category"
+                className="rounded-full border border-gray-300 px-5 py-2.5 text-sm font-semibold text-gray-800 hover:border-red-500 hover:text-red-600"
               >
                 Browse Categories
               </Link>
-
               <Link
                 href="/sarees"
-                className="inline-flex items-center justify-center rounded-full border border-gray-300 bg-white px-8 py-3.5 text-sm font-semibold text-gray-800 transition-all hover:border-red-200 hover:bg-red-50 hover:text-red-600"
+                className="rounded-full bg-red-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-red-700"
               >
                 Shop All Sarees
               </Link>
