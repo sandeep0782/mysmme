@@ -5,7 +5,7 @@ import sharp from "sharp";
 import { uploadFileToCloudinary } from "../config/cloudnaryConfig";
 import { removeLocalFile } from "../config/removeFile";
 import { v2 as cloudinary } from "cloudinary";
-
+import Product from "../models/Product";
 // ============================================================
 // DELETE FILE FROM CLOUDINARY
 // ============================================================
@@ -26,7 +26,8 @@ export const createCategory = async (req: Request, res: Response) => {
   let compressedPath: string | undefined;
 
   try {
-    const { name, shortDescription, description } = req.body;
+    const { name, title, shortDescription, description, seoDescription } =
+      req.body;
 
     // Validate name
     if (!name?.trim()) {
@@ -82,8 +83,11 @@ export const createCategory = async (req: Request, res: Response) => {
 
     const category = await Category.create({
       name: name.trim(),
+      title: typeof title === "string" ? title.trim() : "",
       shortDescription: shortDescription?.trim() || "",
       description: description?.trim() || "",
+      seoDescription:
+        typeof seoDescription === "string" ? seoDescription.trim() : "",
       image: upload.secure_url,
       imagePublicId: upload.public_id,
       isActive: true,
@@ -111,14 +115,42 @@ export const createCategory = async (req: Request, res: Response) => {
 
 export const getAllCategories = async (req: Request, res: Response) => {
   try {
-    const categories = await Category.find().sort({
-      createdAt: -1,
-    });
+    const [categories, productCounts] = await Promise.all([
+      Category.find().sort({ createdAt: -1 }).lean(),
 
-    return response(res, 200, "Categories fetched successfully", categories);
+      Product.aggregate([
+        {
+          $match: {
+            isActive: true,
+            publishStatus: "approved",
+          },
+        },
+        {
+          $group: {
+            _id: "$category",
+            productCount: { $sum: 1 },
+          },
+        },
+      ]),
+    ]);
+
+    const countMap = new Map(
+      productCounts.map((item) => [String(item._id), item.productCount]),
+    );
+
+    const categoriesWithCount = categories.map((category) => ({
+      ...category,
+      productCount: countMap.get(String(category._id)) ?? 0,
+    }));
+
+    return response(
+      res,
+      200,
+      "Categories fetched successfully",
+      categoriesWithCount,
+    );
   } catch (error) {
     console.error("Get categories error:", error);
-
     return response(res, 500, "Internal Server Error");
   }
 };
@@ -152,7 +184,14 @@ export const updateCategory = async (req: Request, res: Response) => {
   let compressedPath: string | undefined;
 
   try {
-    const { name, shortDescription, description, isActive } = req.body;
+    const {
+      name,
+      title,
+      shortDescription,
+      description,
+      seoDescription,
+      isActive,
+    } = req.body;
 
     const category = await Category.findById(req.params.id);
 
@@ -170,6 +209,17 @@ export const updateCategory = async (req: Request, res: Response) => {
     if (name?.trim()) {
       category.name = name.trim();
     }
+    // ========================================================
+    // UPDATE SEO TITLE
+    // ========================================================
+
+    if (title !== undefined) {
+      if (typeof title !== "string") {
+        return response(res, 400, "SEO title must be a string");
+      }
+
+      category.title = title.trim();
+    }
 
     // ========================================================
     // UPDATE DESCRIPTION
@@ -181,6 +231,17 @@ export const updateCategory = async (req: Request, res: Response) => {
 
     if (description !== undefined) {
       category.description = description.trim();
+    }
+    // ========================================================
+    // UPDATE SEO META DESCRIPTION
+    // ========================================================
+
+    if (seoDescription !== undefined) {
+      if (typeof seoDescription !== "string") {
+        return response(res, 400, "SEO description must be a string");
+      }
+
+      category.seoDescription = seoDescription.trim();
     }
 
     // ========================================================

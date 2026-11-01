@@ -1,9 +1,10 @@
 import mongoose, { Schema, Document } from "mongoose";
-
 export interface ICategory extends Document {
   name: string;
+  title?: string;
   shortDescription?: string;
   description?: string;
+  seoDescription?: string;
   slug: string;
   image?: string;
   imagePublicId?: string;
@@ -15,9 +16,22 @@ export interface ICategory extends Document {
 const CategorySchema: Schema = new Schema(
   {
     name: { type: String, required: true, unique: true, trim: true },
+    title: { type: String, default: "", trim: true, maxlength: 160 },
     shortDescription: { type: String, default: "", maxlength: 160 },
     description: { type: String, default: "" },
-    slug: { type: String, required: true, unique: true, lowercase: true },
+    seoDescription: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 300,
+    },
+    slug: {
+      type: String,
+      required: true,
+      unique: true,
+      lowercase: true,
+      trim: true,
+    },
     image: { type: String },
     imagePublicId: { type: String, default: "" },
     isActive: { type: Boolean, default: true },

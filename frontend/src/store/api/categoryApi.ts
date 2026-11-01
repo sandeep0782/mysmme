@@ -15,6 +15,7 @@ export interface Category {
   isActive: boolean;
   createdAt?: string;
   updatedAt?: string;
+  productCount?: number;
 }
 
 interface ApiResponse<T> {

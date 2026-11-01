@@ -19,8 +19,10 @@ const API_URL =
 type Category = {
   _id: string;
   name: string;
+  title?: string;
   shortDescription?: string;
   description?: string;
+  seoDescription?: string;
   slug: string;
   image?: string;
   imagePublicId?: string;
@@ -176,20 +178,15 @@ export async function generateMetadata({
   const categoryName = category.name.trim();
 
   const title =
-    `${categoryName} Sarees | Shop ${categoryName} Saree Collection` +
+    (category.title?.trim() ||
+      `${categoryName} Sarees Online | Shop ${categoryName} Collection`) +
     (currentPage > 1 ? ` | Page ${currentPage}` : "");
 
-  const fallbackDescription =
-    `Explore beautiful ${categoryName} sarees at MYSMME. ` +
-    `Discover our collection of ${categoryName} sarees in different ` +
-    `designs, colours and styles for weddings, festivals, celebrations ` +
-    `and everyday wear.`;
-
   const description =
+    category.seoDescription?.trim() ||
     category.shortDescription?.trim() ||
-    (category.description?.trim()
-      ? category.description.trim().slice(0, 157) + "..."
-      : fallbackDescription);
+    category.description?.trim().slice(0, 160) ||
+    `Shop ${categoryName.toLowerCase()} sarees online at MYSMME. Explore available designs, colours and styles.`;
 
   const baseUrl = `${SITE_URL}/category/${encodeURIComponent(category.slug)}`;
 

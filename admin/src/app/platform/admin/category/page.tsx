@@ -32,8 +32,10 @@ import {
 type Category = {
   _id: string;
   name: string;
+  title?: string;
   shortDescription: string;
   description?: string;
+  seoDescription?: string;
   image?: string;
   imagePublicId?: string;
   isActive: boolean;
@@ -44,8 +46,10 @@ type Category = {
 
 interface CategoryFormData {
   name: string;
+  title: string;
   shortDescription: string;
   description: string;
+  seoDescription: string;
   isActive: "true" | "false";
 }
 
@@ -139,8 +143,10 @@ const Page = () => {
   } = useForm<CategoryFormData>({
     defaultValues: {
       name: "",
+      title: "",
       shortDescription: "",
       description: "",
+      seoDescription: "",
       isActive: "true",
     },
   });
@@ -272,8 +278,10 @@ const Page = () => {
   const resetCategoryForm = () => {
     reset({
       name: "",
+      title: "",
       shortDescription: "",
       description: "",
+      seoDescription: "",
       isActive: "true",
     });
 
@@ -383,8 +391,10 @@ const Page = () => {
       const formData = new FormData();
 
       formData.append("name", data.name.trim());
+      formData.append("title", data.title.trim());
       formData.append("description", data.description.trim());
       formData.append("shortDescription", data.shortDescription.trim());
+      formData.append("seoDescription", data.seoDescription.trim());
       formData.append("isActive", String(data.isActive === "true"));
 
       // ====================================================
@@ -454,8 +464,10 @@ const Page = () => {
 
     reset({
       name: category.name || "",
+      title: category.title || "",
       shortDescription: category.shortDescription || "",
       description: category.description || "",
+      seoDescription: category.seoDescription || "",
       isActive: category.isActive ? "true" : "false",
     });
 
@@ -731,6 +743,12 @@ const Page = () => {
                       Category
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                      SEO Title
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                      SEO Meta Description
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                       SHort Description
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
@@ -783,6 +801,20 @@ const Page = () => {
                             </p>
                           </div>
                         </div>
+                      </td>
+                      {/* SEO TITLE */}
+
+                      <td className="max-w-md px-6 py-5">
+                        <p className="line-clamp-2 text-sm leading-5 text-slate-500">
+                          {category.title || "—"}
+                        </p>
+                      </td>
+                      {/* SEO META DESCRIPTION */}
+
+                      <td className="max-w-md px-6 py-5">
+                        <p className="line-clamp-2 text-sm leading-5 text-slate-500">
+                          {category.seoDescription || "—"}
+                        </p>
                       </td>
                       {/* SHORT DESCRIPTION */}
 
@@ -1012,6 +1044,76 @@ const Page = () => {
                   {errors.name && (
                     <p className="mt-1.5 text-xs font-medium text-red-500">
                       {errors.name.message}
+                    </p>
+                  )}
+                </div>
+                {/* SEO TITLE */}
+
+                <div>
+                  <label
+                    htmlFor="category-title"
+                    className="mb-2 block text-sm font-semibold text-slate-700"
+                  >
+                    SEO Title
+                  </label>
+
+                  <input
+                    id="category-title"
+                    type="text"
+                    placeholder="Enter SEO title..."
+                    disabled={isSaving}
+                    {...register("title", {
+                      maxLength: {
+                        value: 160,
+                        message: "SEO title cannot exceed 160 characters",
+                      },
+                    })}
+                    className={`h-11 w-full rounded-lg border bg-white px-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:ring-2 disabled:cursor-not-allowed disabled:bg-slate-50 ${
+                      errors.title
+                        ? "border-red-300 focus:border-red-500 focus:ring-red-100"
+                        : "border-slate-200 focus:border-blue-500 focus:ring-blue-100"
+                    }`}
+                  />
+
+                  {errors.title && (
+                    <p className="mt-1.5 text-xs font-medium text-red-500">
+                      {errors.title.message}
+                    </p>
+                  )}
+                </div>
+
+                {/* SEO META DESCRIPTION */}
+
+                <div>
+                  <label
+                    htmlFor="category-seo-description"
+                    className="mb-2 block text-sm font-semibold text-slate-700"
+                  >
+                    SEO Meta Description
+                  </label>
+
+                  <textarea
+                    id="category-seo-description"
+                    rows={3}
+                    placeholder="Enter SEO meta description..."
+                    disabled={isSaving}
+                    {...register("seoDescription", {
+                      maxLength: {
+                        value: 300,
+                        message:
+                          "SEO meta description cannot exceed 300 characters",
+                      },
+                    })}
+                    className={`w-full resize-none rounded-lg border bg-white px-3 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:ring-2 disabled:cursor-not-allowed disabled:bg-slate-50 ${
+                      errors.seoDescription
+                        ? "border-red-300 focus:border-red-500 focus:ring-red-100"
+                        : "border-slate-200 focus:border-blue-500 focus:ring-blue-100"
+                    }`}
+                  />
+
+                  {errors.seoDescription && (
+                    <p className="mt-1.5 text-xs font-medium text-red-500">
+                      {errors.seoDescription.message}
                     </p>
                   )}
                 </div>
