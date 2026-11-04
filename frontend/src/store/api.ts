@@ -17,6 +17,7 @@ export const api = createApi({
     "Wishlist",
     "Brand",
     "Category",
+    "Blog",
   ],
   endpoints: (builder) => ({}),
 });
