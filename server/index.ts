@@ -40,6 +40,7 @@ import adminUserRoutes from "./routes/adminUserRoutes";
 import freelancerProfileRoutes from "./routes/freelancerProfileRoutes";
 import freelancerSocialRoutes from "./routes/freelancerSocialRoutes";
 import freelancerAgreementRoute from "./routes/freelancerAgreementRoute";
+import blogRoutes from "./routes/blogRoutes";
 
 // Load environment variables BEFORE importing/starting
 // anything that depends on process.env.
@@ -173,6 +174,7 @@ app.use("/api/admin/users", adminUserRoutes);
 app.use("/api/freelancer", freelancerProfileRoutes);
 app.use("/api/freelancer", freelancerSocialRoutes);
 app.use("/api/freelancer", freelancerAgreementRoute);
+app.use("/api/blogs", blogRoutes);
 
 // -----------------------------------------------------
 // Start server

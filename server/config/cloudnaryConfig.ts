@@ -432,9 +432,28 @@ const categoryImageUploadMiddleware: RequestHandler = multer({
 // EXPORT
 // ============================================================
 
+// ============================================================
+// BLOG FEATURED IMAGE
+// ============================================================
+
+const blogImageUploadMiddleware: RequestHandler = multer({
+  dest: "uploads/",
+  limits: {
+    fileSize: 5 * 1024 * 1024,
+  },
+  fileFilter: (_req, file, callback) => {
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.mimetype)) {
+      return callback(new Error("Only JPG, PNG and WebP images are allowed"));
+    }
+
+    callback(null, true);
+  },
+}).single("featuredImage");
+
 export {
   multerMiddleware,
   uploadFileToCloudinary,
   logoUploadMiddleware,
   categoryImageUploadMiddleware,
+  blogImageUploadMiddleware,
 };
