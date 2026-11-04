@@ -29,6 +29,7 @@ import {
   Video,
   X,
   TicketPercent,
+  BookOpen,
 } from "lucide-react";
 
 /* ================================================================
@@ -138,6 +139,12 @@ const menuItems: SidebarItem[] = [
         href: "/platform/admin/import",
       },
     ],
+  },
+
+  {
+    icon: <BookOpen className="h-5 w-5" />,
+    label: "Blog",
+    href: "/platform/admin/blogs",
   },
 
   /* ==============================================================

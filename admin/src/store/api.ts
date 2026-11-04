@@ -25,6 +25,7 @@ export const api = createApi({
     "Campaign",
     "Earning",
     "Contact",
+    "Blog",
   ],
   endpoints: (builder) => ({}),
   // Refetch when the component mounts again
