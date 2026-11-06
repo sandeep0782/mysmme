@@ -40,25 +40,6 @@ export const metadata: Metadata = {
   creator: siteName,
   publisher: siteName,
 
-  keywords: [
-    "sarees",
-    "saree",
-    "buy sarees online",
-    "shop sarees online",
-    "saree marketplace",
-    "Indian sarees",
-    "silk sarees",
-    "cotton sarees",
-    "organza sarees",
-    "Banarasi sarees",
-    "Kanjivaram sarees",
-    "handloom sarees",
-    "designer sarees",
-    "party wear sarees",
-    "daily wear sarees",
-    "wedding sarees",
-    "sell sarees online",
-  ],
 
   category: "shopping",
 

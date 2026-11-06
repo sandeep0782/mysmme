@@ -1,29 +1,59 @@
-"use client";
-
-import { useParams } from "next/navigation";
+import type { Metadata } from "next";
 import Link from "next/link";
-import { useState } from "react";
-import {
-  ArrowLeft,
-  CalendarDays,
-  Clock3,
-  UserRound,
-  BookOpen,
-  Share2,
-  Check,
-  Loader2,
-  AlertCircle,
-  Tag,
-} from "lucide-react";
+import { notFound } from "next/navigation";
+import { cache } from "react";
+import sanitizeHtml from "sanitize-html";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import { CalendarDays, Clock3, UserRound, Tag } from "lucide-react";
+import ShareButton from "./ShareButton";
 
-import { useGetBlogBySlugQuery } from "@/store/api/blogApi";
+const SITE_URL = (
+  process.env.NEXT_PUBLIC_SITE_URL || "https://mysmme.com"
+).replace(/\/+$/, "");
+const API_URL = process.env.NEXT_PUBLIC_API_URL; // adjust to your backend base URL
+
+type Blog = {
+  _id: string;
+  slug: string;
+  title: string;
+  excerpt: string;
+  content: string;
+  featuredImage?: string;
+  imageAlt?: string;
+  category: string;
+  tags: string[];
+  author?: string;
+  readTime: number;
+  seoTitle?: string;
+  seoDescription?: string;
+  canonicalUrl?: string;
+  publishedAt?: string | null;
+  updatedAt?: string;
+};
+
+// cache() means generateMetadata and the page share one fetch
+const getBlog = cache(async (slug: string): Promise<Blog | null> => {
+  const url = `${API_URL}/blogs/slug/${encodeURIComponent(slug)}`;
+  try {
+    const res = await fetch(url, { next: { revalidate: 600 } });
+    if (!res.ok) {
+      console.error("[getBlog] failed:", res.status, url);
+      return null;
+    }
+    const json = await res.json();
+    const blog = json?.blog ?? json?.data?.blog ?? json?.data ?? json;
+    return blog?.slug ? (blog as Blog) : null;
+  } catch (e) {
+    console.error("[getBlog] error:", e, url);
+    return null;
+  }
+});
 
 const formatDate = (value?: string | null) => {
   if (!value) return "";
-
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "";
-
   return date.toLocaleDateString("en-IN", {
     day: "2-digit",
     month: "long",
@@ -31,135 +61,128 @@ const formatDate = (value?: string | null) => {
   });
 };
 
-export default function BlogDetailPage() {
-  const params = useParams<{ slug: string }>();
-  const slug = params.slug;
+const isHtml = (s: string) => /<(p|h[1-6]|ul|ol|li|table|div|br)[\s>/]/i.test(s);
 
-  const [copied, setCopied] = useState(false);
-
-  const {
-    data: blog,
-    isLoading,
-    isError,
-    refetch,
-  } = useGetBlogBySlugQuery(slug, {
-    skip: !slug,
+const cleanHtml = (html: string) =>
+  sanitizeHtml(html, {
+    allowedTags: sanitizeHtml.defaults.allowedTags.concat(["img"]),
+    allowedAttributes: {
+      a: ["href", "name", "target", "rel"],
+      img: ["src", "alt", "width", "height", "loading"],
+    },
+    allowedSchemes: ["http", "https", "mailto"],
   });
 
-  const handleShare = async () => {
-    if (!blog) return;
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const blog = await getBlog(slug);
+  if (!blog)
+    return {
+      title: { absolute: "Article not found | MYSMME" },
+      robots: { index: false },
+    };
 
-    const url = window.location.href;
+  const title = blog.seoTitle || `${blog.title} | MYSMME`;
+  const description = blog.seoDescription || blog.excerpt;
+  const url = `${SITE_URL}/blogs/${blog.slug}`;
+  const images = blog.featuredImage
+    ? [{ url: blog.featuredImage, alt: blog.imageAlt || blog.title }]
+    : undefined;
 
-    try {
-      if (navigator.share) {
-        await navigator.share({
-          title: blog.title,
-          text: blog.excerpt,
-          url,
-        });
-      } else {
-        await navigator.clipboard.writeText(url);
-        setCopied(true);
-        window.setTimeout(() => setCopied(false), 2000);
-      }
-    } catch (error) {
-      console.error("Share failed:", error);
-    }
+  return {
+    title: { absolute: title },
+    description,
+    keywords: null, // stops the site-wide keywords tag on blog posts
+    alternates: { canonical: url },
+    robots: { index: true, follow: true },
+    openGraph: {
+      type: "article",
+      title,
+      description,
+      url,
+      siteName: "MYSMME",
+      locale: "en_IN",
+      images,
+      publishedTime: blog.publishedAt ?? undefined,
+      modifiedTime: blog.updatedAt ?? undefined,
+      authors: [blog.author || "MYSMME Editorial Team"],
+      tags: blog.tags,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: images?.map((i) => i.url),
+    },
   };
+}
 
-  if (isLoading) {
-    return (
-      <div className="flex min-h-[70vh] items-center justify-center">
-        <Loader2 className="h-9 w-9 animate-spin text-[#ff3f6c]" />
-      </div>
-    );
-  }
+export default async function BlogDetailPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
+  const blog = await getBlog(slug);
+  if (!blog) notFound();
 
-  if (isError || !blog) {
-    return (
-      <main className="min-h-screen bg-[#faf9f8] px-4 py-20">
-        <div className="mx-auto max-w-xl rounded-2xl bg-white p-10 text-center shadow-sm">
-          <AlertCircle className="mx-auto h-12 w-12 text-red-500" />
+  const url = `${SITE_URL}/blogs/${blog.slug}`;
 
-          <h1 className="mt-4 text-2xl font-bold text-slate-900">
-            Article unavailable
-          </h1>
-
-          <p className="mt-3 text-slate-500">
-            This article may have been removed or is not published.
-          </p>
-
-          <div className="mt-7 flex justify-center gap-3">
-            <button
-              type="button"
-              onClick={() => refetch()}
-              className="rounded-lg border border-slate-200 px-5 py-2.5 text-sm font-semibold"
-            >
-              Retry
-            </button>
-
-            <Link
-              href="/blogs"
-              className="rounded-lg bg-[#ff3f6c] px-5 py-2.5 text-sm font-semibold text-white"
-            >
-              All Articles
-            </Link>
-          </div>
-        </div>
-      </main>
-    );
-  }
-
-  const articleHtml = `<!doctype html>
-<html>
-<head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<style>
-  * { box-sizing: border-box; }
-  body {
-    margin: 0;
-    font-family: system-ui, -apple-system, sans-serif;
-    font-size: 16px;
-    line-height: 1.85;
-    color: #475569;
-    overflow-wrap: anywhere;
-  }
-  h1, h2, h3, h4 {
-    color: #0f172a;
-    line-height: 1.35;
-    margin-top: 1.5em;
-  }
-  p { margin: 0 0 1.25em; }
-  img { max-width: 100%; height: auto; border-radius: 12px; }
-  a { color: #ff3f6c; }
-  blockquote {
-    border-left: 4px solid #ff3f6c;
-    padding: 12px 20px;
-    margin: 20px 0;
-    background: #fff1f4;
-    border-radius: 0 8px 8px 0;
-  }
-  ul, ol { padding-left: 24px; margin-bottom: 20px; }
-  li { margin-bottom: 8px; }
-  table { border-collapse: collapse; width: 100%; }
-  td, th { border: 1px solid #e2e8f0; padding: 10px; }
-</style>
-</head>
-<body>${blog.content || ""}</body>
-</html>`;
+  const jsonLd = [
+    {
+      "@context": "https://schema.org",
+      "@type": "BlogPosting",
+      headline: blog.title,
+      description: blog.seoDescription || blog.excerpt,
+      image: blog.featuredImage ? [blog.featuredImage] : undefined,
+      datePublished: blog.publishedAt ?? undefined,
+      dateModified: blog.updatedAt ?? blog.publishedAt ?? undefined,
+      author: {
+        "@type": "Organization",
+        name: blog.author || "MYSMME Editorial Team",
+      },
+      publisher: { "@type": "Organization", name: "MYSMME", url: SITE_URL },
+      mainEntityOfPage: url,
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        { "@type": "ListItem", position: 1, name: "Home", item: SITE_URL },
+        {
+          "@type": "ListItem",
+          position: 2,
+          name: "Journal",
+          item: `${SITE_URL}/blogs`,
+        },
+        { "@type": "ListItem", position: 3, name: blog.title, item: url },
+      ],
+    },
+  ];
 
   return (
     <main className="min-h-screen bg-[#faf9f8]">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c"),
+        }}
+      />
+
       <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
-        <Link
-          href="/blogs"
-          className="mb-8 inline-flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-[#ff3f6c]"
-        >
-          <ArrowLeft size={17} />
-          Back to Journal
-        </Link>
+        <nav aria-label="Breadcrumb" className="mb-8 text-sm text-slate-500">
+          <Link href="/" className="hover:text-[#ff3f6c]">
+            Home
+          </Link>
+          <span className="mx-2">/</span>
+          <Link href="/blogs" className="hover:text-[#ff3f6c]">
+            Journal
+          </Link>
+        </nav>
 
         <article>
           <header className="mb-8 text-center">
@@ -180,12 +203,12 @@ export default function BlogDetailPage() {
                 <UserRound size={16} />
                 {blog.author || "MYSMME Editorial Team"}
               </span>
-
               <span className="inline-flex items-center gap-2">
                 <CalendarDays size={16} />
-                {formatDate(blog.publishedAt)}
+                <time dateTime={blog.publishedAt ?? undefined}>
+                  {formatDate(blog.publishedAt)}
+                </time>
               </span>
-
               <span className="inline-flex items-center gap-2">
                 <Clock3 size={16} />
                 {blog.readTime} min read
@@ -193,37 +216,33 @@ export default function BlogDetailPage() {
             </div>
           </header>
 
-          <div className="mb-9 overflow-hidden rounded-2xl bg-pink-50">
-            {blog.featuredImage ? (
+          {blog.featuredImage && (
+            <div className="mb-9 overflow-hidden rounded-2xl bg-pink-50">
               <img
                 src={blog.featuredImage}
                 alt={blog.imageAlt || blog.title}
+                fetchPriority="high"
                 className="aspect-[16/9] w-full object-cover"
               />
-            ) : (
-              <div className="flex aspect-[16/9] items-center justify-center">
-                <BookOpen className="h-16 w-16 text-pink-200" />
-              </div>
-            )}
-          </div>
+            </div>
+          )}
 
           <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm sm:p-10">
-            <iframe
-              title={`${blog.title} article content`}
-              sandbox=""
-              srcDoc={articleHtml}
-              className="h-[800px] w-full border-0"
-              referrerPolicy="no-referrer"
-            />
+            <div className="blog-content">
+              {isHtml(blog.content || "") ? (
+                <div dangerouslySetInnerHTML={{ __html: cleanHtml(blog.content || "") }} />
+              ) : (
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{blog.content || ""}</ReactMarkdown>
+              )}
+            </div>
 
             {blog.tags?.length > 0 && (
               <div className="mt-8 border-t border-slate-100 pt-6">
                 <div className="flex flex-wrap items-center gap-2">
                   <Tag size={17} className="text-[#ff3f6c]" />
-
-                  {blog.tags.map((tag, index) => (
+                  {blog.tags.map((tag, i) => (
                     <span
-                      key={`${tag}-${index}`}
+                      key={`${tag}-${i}`}
                       className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-600"
                     >
                       #{tag}
@@ -236,20 +255,11 @@ export default function BlogDetailPage() {
             <div className="mt-8 flex items-center justify-between border-t border-slate-100 pt-6">
               <Link
                 href="/blogs"
-                className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-[#ff3f6c]"
+                className="text-sm font-semibold text-slate-600 hover:text-[#ff3f6c]"
               >
-                <ArrowLeft size={16} />
-                All Articles
+                ← All Articles
               </Link>
-
-              <button
-                type="button"
-                onClick={handleShare}
-                className="inline-flex items-center gap-2 rounded-lg bg-pink-50 px-4 py-2.5 text-sm font-semibold text-[#ff3f6c] hover:bg-pink-100"
-              >
-                {copied ? <Check size={17} /> : <Share2 size={17} />}
-                {copied ? "Link Copied" : "Share Article"}
-              </button>
+              <ShareButton title={blog.title} text={blog.excerpt} />
             </div>
           </div>
         </article>

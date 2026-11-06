@@ -88,10 +88,46 @@ async function fetchCategories(): Promise<Category[]> {
   }
 }
 
+type Blog = {
+  slug?: string;
+  updatedAt?: string;
+  publishedAt?: string | null;
+};
+
+async function fetchBlogs(): Promise<Blog[]> {
+  const all: Blog[] = [];
+
+  try {
+    for (let page = 1; page <= 20; page++) {
+      const response = await fetch(`${API_URL}/blogs?page=${page}&limit=50`, {
+        cache: "no-store",
+      });
+
+      if (!response.ok) {
+        console.error("[SITEMAP] Blogs API failed:", response.status);
+        break;
+      }
+
+      const json = await response.json();
+      const root = json?.data ?? json;
+      const blogs: Blog[] = Array.isArray(root?.blogs) ? root.blogs : [];
+      all.push(...blogs);
+
+      const totalPages = Number(root?.pagination?.totalPages ?? 1);
+      if (page >= totalPages) break;
+    }
+  } catch (error) {
+    console.error("[SITEMAP] Blogs fetch error:", error);
+  }
+
+  return all;
+}
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const [products, categories] = await Promise.all([
+  const [products, categories, blogs] = await Promise.all([
     fetchProducts(),
     fetchCategories(),
+    fetchBlogs(),
   ]);
 
   const now = new Date();
@@ -193,6 +229,30 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "yearly",
       priority: 0.3,
     },
+
+    // ============================================================
+    // BLOG
+    // ============================================================
+
+    {
+      url: `${SITE_URL}/blogs`,
+      lastModified: now,
+      changeFrequency: "weekly",
+      priority: 0.7,
+    },
+
+    ...blogs
+      .filter((blog) => blog.slug)
+      .map((blog) => ({
+        url: `${SITE_URL}/blogs/${encodeURIComponent(blog.slug!)}`,
+        lastModified: blog.updatedAt
+          ? new Date(blog.updatedAt)
+          : blog.publishedAt
+            ? new Date(blog.publishedAt)
+            : now,
+        changeFrequency: "monthly" as const,
+        priority: 0.7,
+      })),
 
     // ============================================================
     // CATEGORY DETAIL PAGES
