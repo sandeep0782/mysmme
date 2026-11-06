@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CheckCircle, Package, Truck, Home, Calendar } from "lucide-react";
@@ -9,7 +9,7 @@ import confetti from "canvas-confetti";
 
 import { useGetOrderByIdQuery } from "@/store/api/orderApi";
 
-export default function ConfirmationPage() {
+function ConfirmationContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -341,5 +341,19 @@ export default function ConfirmationPage() {
         </Card>
       </motion.div>
     </div>
+  );
+}
+
+export default function ConfirmationPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center">
+          <div className="text-xl font-semibold">Loading order...</div>
+        </div>
+      }
+    >
+      <ConfirmationContent />
+    </Suspense>
   );
 }

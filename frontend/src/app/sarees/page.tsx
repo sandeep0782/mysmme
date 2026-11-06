@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import SareesPageClient from "./SareesPageClient";
 
 export const metadata: Metadata = {
@@ -21,5 +22,9 @@ export const metadata: Metadata = {
 };
 
 export default function Page() {
-  return <SareesPageClient />;
+  return (
+    <Suspense fallback={<div className="min-h-[60vh]" />}>
+      <SareesPageClient />
+    </Suspense>
+  );
 }

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import type { ComponentProps } from "react";
+import { Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -610,9 +611,11 @@ export default async function CategoryDetailPage({
             <div className="grid grid-cols-1 gap-5 lg:grid-cols-[240px_minmax(0,1fr)] xl:gap-6">
               <aside className="hidden lg:block">
                 <div className="sticky top-24">
-                  <CategoryFilters
-                    products={categoryProducts.filter((p) => p.slug && p.title)}
-                  />
+                  <Suspense fallback={<div className="min-h-[200px]" />}>
+                    <CategoryFilters
+                      products={categoryProducts.filter((p) => p.slug && p.title)}
+                    />
+                  </Suspense>
                 </div>
               </aside>
 
