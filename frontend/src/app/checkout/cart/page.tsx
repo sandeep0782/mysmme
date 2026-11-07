@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Script from "next/script";
 import { useDispatch, useSelector } from "react-redux";
@@ -14,7 +14,7 @@ import {
   Tag,
   X,
 } from "lucide-react";
-
+import { sendGTMEvent } from "@next/third-parties/google";
 import {
   Dialog,
   DialogContent,
@@ -199,6 +199,59 @@ export default function CheckoutPage() {
 
   const validCartItems = cart.items.filter((item) => item.product);
 
+  const trackedCartKey = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (
+      step !== "cart" ||
+      isCartLoading ||
+      !cartData?.success ||
+      validCartItems.length === 0
+    ) {
+      return;
+    }
+
+    const cartKey = JSON.stringify(
+      validCartItems.map((item) => ({
+        id: String(item.product._id),
+        quantity: item.quantity,
+      })),
+    );
+
+    if (trackedCartKey.current === cartKey) return;
+
+    trackedCartKey.current = cartKey;
+
+    const getName = (value: any) =>
+      typeof value === "string" ? value : (value?.name ?? "");
+
+    const items = validCartItems.map((item) => ({
+      item_id: String(item.product._id),
+      item_name: item.product.title ?? "",
+      item_brand: getName((item.product as any).brand),
+      item_category: getName((item.product as any).category),
+      item_variant: getName((item.product as any).color),
+      price: Number(item.product.finalPrice ?? 0),
+      quantity: Number(item.quantity),
+    }));
+
+    const value = items.reduce(
+      (sum, item) => sum + item.price * item.quantity,
+      0,
+    );
+
+    sendGTMEvent({ ecommerce: null });
+
+    sendGTMEvent({
+      event: "view_cart",
+      ecommerce: {
+        currency: "INR",
+        value,
+        items,
+      },
+    });
+  }, [cartData, isCartLoading, step, validCartItems]);
+
   /*
    * ============================================================
    * TOTALS
@@ -217,6 +270,37 @@ export default function CheckoutPage() {
 
   const totalDiscount = totalOriginalPrice - totalAmount;
 
+  const trackBeginCheckout = () => {
+    if (validCartItems.length === 0) return;
+
+    const items = validCartItems.map((item) => {
+      const product = item.product;
+
+      const getName = (value: any) =>
+        typeof value === "string" ? value : (value?.name ?? "");
+
+      return {
+        item_id: String(product._id),
+        item_name: product.title ?? "",
+        item_brand: getName((product as any).brand),
+        item_category: getName((product as any).category),
+        item_variant: getName((product as any).color),
+        price: Number(product.finalPrice ?? 0),
+        quantity: Number(item.quantity),
+      };
+    });
+
+    sendGTMEvent({ ecommerce: null });
+
+    sendGTMEvent({
+      event: "begin_checkout",
+      ecommerce: {
+        currency: "INR",
+        value: totalAmount,
+        items,
+      },
+    });
+  };
   /*
    * ============================================================
    * SHIPPING
@@ -254,6 +338,117 @@ export default function CheckoutPage() {
   const finalAmount =
     Math.max(0, totalAmount - couponDiscount) + maximunShippingCharge;
 
+  const trackShippingInfo = () => {
+    if (!selectedAddress || validCartItems.length === 0) return;
+
+    const getName = (value: any) =>
+      typeof value === "string" ? value : (value?.name ?? "");
+
+    const items = validCartItems.map((item) => {
+      const product = item.product;
+
+      return {
+        item_id: String(product._id),
+        item_name: product.title ?? "",
+        item_brand: getName((product as any).brand),
+        item_category: getName((product as any).category),
+        item_variant: getName((product as any).color),
+        price: Number(product.finalPrice ?? 0),
+        quantity: Number(item.quantity),
+      };
+    });
+
+    sendGTMEvent({ ecommerce: null });
+
+    sendGTMEvent({
+      event: "add_shipping_info",
+      ecommerce: {
+        currency: "INR",
+        value: Math.max(0, totalAmount - couponDiscount),
+        shipping_tier: "Standard Delivery",
+        items,
+      },
+    });
+  };
+
+  const trackPaymentInfo = () => {
+    if (!selectedAddress || validCartItems.length === 0) return;
+
+    const getName = (value: any) =>
+      typeof value === "string" ? value : (value?.name ?? "");
+
+    const items = validCartItems.map((item) => {
+      const product = item.product;
+
+      return {
+        item_id: String(product._id),
+        item_name: product.title ?? "",
+        item_brand: getName((product as any).brand),
+        item_category: getName((product as any).category),
+        item_variant: getName((product as any).color),
+        price: Number(product.finalPrice ?? 0),
+        quantity: Number(item.quantity),
+      };
+    });
+
+    sendGTMEvent({ ecommerce: null });
+
+    sendGTMEvent({
+      event: "add_payment_info",
+      ecommerce: {
+        currency: "INR",
+        value: Math.max(0, finalAmount - maximunShippingCharge),
+        payment_type: "Razorpay",
+        items,
+      },
+    });
+  };
+
+  // ============================================================
+  // GA4 - PURCHASE TRACKING
+  // ============================================================
+
+  const trackPurchase = (orderId: string, paidAmount: number) => {
+    if (!orderId || validCartItems.length === 0) return;
+
+    // Prevent duplicate purchase tracking in this browser session
+    const trackingKey = `ga4_purchase_${orderId}`;
+
+    if (sessionStorage.getItem(trackingKey)) return;
+
+    const getName = (value: any) =>
+      typeof value === "string" ? value : (value?.name ?? "");
+
+    const items = validCartItems.map((item) => {
+      const product = item.product;
+
+      return {
+        item_id: String(product._id),
+        item_name: product.title ?? "",
+        item_brand: getName((product as any).brand),
+        item_category: getName((product as any).category),
+        item_variant: getName((product as any).color),
+        price: Number(product.finalPrice ?? 0),
+        quantity: Number(item.quantity),
+      };
+    });
+
+    sendGTMEvent({ ecommerce: null });
+
+    sendGTMEvent({
+      event: "purchase",
+      ecommerce: {
+        transaction_id: orderId,
+        currency: "INR",
+        value: Math.max(0, paidAmount - maximunShippingCharge),
+        shipping: maximunShippingCharge,
+        coupon: appliedCoupon ?? undefined,
+        items,
+      },
+    });
+
+    sessionStorage.setItem(trackingKey, "1");
+  };
   /*
    * ============================================================
    * REMOVE ITEM
@@ -261,12 +456,44 @@ export default function CheckoutPage() {
    */
 
   const handleRemoveItem = async (productId: string) => {
+    const removedItem = validCartItems.find(
+      (item) => String(item.product._id) === productId,
+    );
     try {
       const result = await removeFromCartMutation(productId).unwrap();
 
       if (result.success && result.data) {
         dispatch(setCart(result.data));
+        if (removedItem) {
+          const product = removedItem.product;
 
+          const getName = (value: any) =>
+            typeof value === "string" ? value : (value?.name ?? "");
+
+          const price = Number(product.finalPrice ?? 0);
+          const quantity = Number(removedItem.quantity);
+
+          sendGTMEvent({ ecommerce: null });
+
+          sendGTMEvent({
+            event: "remove_from_cart",
+            ecommerce: {
+              currency: "INR",
+              value: price * quantity,
+              items: [
+                {
+                  item_id: String(product._id),
+                  item_name: product.title ?? "",
+                  item_brand: getName((product as any).brand),
+                  item_category: getName((product as any).category),
+                  item_variant: getName((product as any).color),
+                  price,
+                  quantity,
+                },
+              ],
+            },
+          });
+        }
         /*
          * Cart changed,
          * coupon must be applied again.
@@ -464,7 +691,8 @@ export default function CheckoutPage() {
         toast.error("Your cart is empty.");
         return;
       }
-
+      // GA4 - BEGIN CHECKOUT
+      trackBeginCheckout();
       dispatch(setCheckoutStep("address"));
 
       return;
@@ -475,6 +703,7 @@ export default function CheckoutPage() {
      */
     if (step === "address") {
       if (selectedAddress) {
+        trackShippingInfo();
         dispatch(setCheckoutStep("payment"));
       } else {
         setShowAddressDialog(true);
@@ -487,6 +716,7 @@ export default function CheckoutPage() {
      * PAYMENT
      */
     if (step === "payment") {
+      trackPaymentInfo();
       await handlePayment();
     }
   };
@@ -571,6 +801,12 @@ export default function CheckoutPage() {
             if (!createdOrderId) {
               throw new Error("Order ID not returned");
             }
+
+            // GA4 - PURCHASE EVENT
+            trackPurchase(
+              String(createdOrderId),
+              Number(razorpayOrder.amount) / 100,
+            );
 
             dispatch(clearCart());
 

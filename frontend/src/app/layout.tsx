@@ -6,7 +6,7 @@ import "./globals.css";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import LayoutWrapper from "./LayoutWrapper";
-
+import { GoogleTagManager } from "@next/third-parties/google";
 const figtree = Figtree({
   subsets: ["latin"],
   weight: ["300", "400", "500", "600", "700", "800"],
@@ -39,7 +39,6 @@ export const metadata: Metadata = {
 
   creator: siteName,
   publisher: siteName,
-
 
   category: "shopping",
 
@@ -132,6 +131,7 @@ export default function RootLayout({
           {children}
           <Footer />
         </LayoutWrapper>
+        <GoogleTagManager gtmId="GTM-5VQZVPGJ" />
       </body>
     </html>
   );

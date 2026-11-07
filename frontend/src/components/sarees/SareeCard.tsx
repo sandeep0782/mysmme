@@ -3,7 +3,7 @@ import { cloudinaryImage } from "@/lib/cloudinary";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-
+import { sendGTMEvent } from "@next/third-parties/google";
 import { Heart, Loader2 } from "lucide-react";
 
 import Image from "next/image";
@@ -148,6 +148,40 @@ const SareeCard = ({ saree }: SareeCardProps) => {
   const color = getDisplayValue(saree?.color);
 
   const title = getDisplayValue(saree?.title);
+
+  // ==========================================================
+  // GA4 - SELECT ITEM TRACKING
+  // ==========================================================
+
+  const handleSelectItem = () => {
+    if (!productId) return;
+
+    const item = {
+      item_id: productId,
+      item_name: title,
+      item_brand: brand,
+      item_category: getDisplayValue(saree?.category),
+      item_variant: color,
+      price: finalPrice,
+      quantity: 1,
+      item_list_id: "sarees_listing",
+      item_list_name: "Sarees Listing",
+    };
+
+    // Clear previous ecommerce data
+    sendGTMEvent({ ecommerce: null });
+
+    // Track selected product
+    sendGTMEvent({
+      event: "select_item",
+      ecommerce: {
+        currency: "INR",
+        item_list_id: "sarees_listing",
+        item_list_name: "Sarees Listing",
+        items: [item],
+      },
+    });
+  };
 
   // ==========================================================
   // IMAGES
@@ -323,7 +357,32 @@ const SareeCard = ({ saree }: SareeCardProps) => {
 
       if (result?.success && result?.data) {
         dispatch(addToCart(result.data));
+        // GA4 - ADD TO CART (BUY NOW)
 
+        const itemPrice = Number(saree?.finalPrice);
+
+        if (Number.isFinite(itemPrice) && itemPrice >= 0) {
+          sendGTMEvent({ ecommerce: null });
+
+          sendGTMEvent({
+            event: "add_to_cart",
+            ecommerce: {
+              currency: "INR",
+              value: itemPrice,
+              items: [
+                {
+                  item_id: productId,
+                  item_name: title,
+                  item_brand: brand,
+                  item_category: getDisplayValue(saree?.category),
+                  item_variant: color,
+                  price: itemPrice,
+                  quantity: 1,
+                },
+              ],
+            },
+          });
+        }
         toast.success(result?.message || "Added to cart successfully");
 
         router.push("/checkout/cart");
@@ -386,6 +445,7 @@ const SareeCard = ({ saree }: SareeCardProps) => {
             target="_blank"
             rel="noopener noreferrer"
             className="block"
+            onClick={handleSelectItem}
           >
             {/* ==================================================
                 IMAGE AREA

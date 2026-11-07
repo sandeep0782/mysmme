@@ -10,7 +10,9 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+
+import { sendGTMEvent } from "@next/third-parties/google";
 import type { SareeProduct } from "@/types/product";
 import { useAddToCartMutation } from "@/store/api/cartApi";
 import {
@@ -32,6 +34,46 @@ interface SareeDetailsClientProps {
 }
 
 const SareeDetailsClient = ({ saree }: SareeDetailsClientProps) => {
+  // ==========================================
+  // GOOGLE ANALYTICS - PRODUCT DETAIL VIEW
+  // ==========================================
+  useEffect(() => {
+    if (!saree?._id) return;
+
+    const price = Number(saree.finalPrice ?? 0);
+
+    if (!Number.isFinite(price)) return;
+
+    // Clear previous ecommerce data
+    sendGTMEvent({ ecommerce: null });
+
+    // Track product detail view
+    sendGTMEvent({
+      event: "view_item",
+      ecommerce: {
+        currency: "INR",
+        value: price,
+        items: [
+          {
+            item_id: String(saree._id),
+            item_name: saree.title,
+            item_brand: saree.brand?.name || "",
+            item_category: saree.category?.name || "Sarees",
+            item_variant: saree.color?.name || "",
+            price: price,
+            quantity: 1,
+          },
+        ],
+      },
+    });
+  }, [
+    saree._id,
+    saree.title,
+    saree.finalPrice,
+    saree.brand?.name,
+    saree.category?.name,
+    saree.color?.name,
+  ]);
   const [pinCode, setPinCode] = useState("");
   const [pinError, setPinError] = useState("");
   const [deliveryMessage, setDeliveryMessage] = useState("");
@@ -91,6 +133,34 @@ const SareeDetailsClient = ({ saree }: SareeDetailsClientProps) => {
 
       if (result.success && result.data) {
         dispatch(addToCart(result.data));
+        // ==========================================
+        // GA4 - ADD TO CART TRACKING
+        // ==========================================
+
+        const itemPrice = Number(saree.finalPrice);
+
+        if (Number.isFinite(itemPrice) && itemPrice >= 0) {
+          sendGTMEvent({ ecommerce: null });
+
+          sendGTMEvent({
+            event: "add_to_cart",
+            ecommerce: {
+              currency: "INR",
+              value: itemPrice,
+              items: [
+                {
+                  item_id: String(saree._id),
+                  item_name: saree.title,
+                  item_brand: saree.brand?.name ?? "",
+                  item_category: saree.category?.name ?? "Sarees",
+                  item_variant: saree.color?.name ?? "",
+                  price: itemPrice,
+                  quantity: 1,
+                },
+              ],
+            },
+          });
+        }
         toast.success(result.message || "Added to cart successfully");
       } else {
         throw new Error(result.message || "Failed to add to cart");

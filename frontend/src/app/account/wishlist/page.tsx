@@ -10,7 +10,7 @@ import {
   IndianRupee,
   Eye,
 } from "lucide-react";
-
+import { sendGTMEvent } from "@next/third-parties/google";
 import Image from "next/image";
 
 import { Button } from "@/components/ui/button";
@@ -104,6 +104,10 @@ export default function WishlistPage() {
   /* ===================================================== */
 
   const handleAddToCart = async (productId: string) => {
+    const selectedProduct = wishlistItems.find(
+      (item: any) => String(item._id) === String(productId),
+    );
+
     setAddingProductId(productId);
 
     try {
@@ -114,6 +118,37 @@ export default function WishlistPage() {
 
       if (result.success && result.data) {
         dispatch(addToCart(result.data));
+        // GA4 - ADD TO CART FROM WISHLIST
+
+        if (selectedProduct) {
+          const itemPrice = Number(selectedProduct.finalPrice);
+
+          if (Number.isFinite(itemPrice) && itemPrice >= 0) {
+            const getName = (value: any) =>
+              typeof value === "string" ? value : (value?.name ?? "");
+
+            sendGTMEvent({ ecommerce: null });
+
+            sendGTMEvent({
+              event: "add_to_cart",
+              ecommerce: {
+                currency: "INR",
+                value: itemPrice,
+                items: [
+                  {
+                    item_id: String(selectedProduct._id),
+                    item_name: selectedProduct.title ?? "",
+                    item_brand: getName(selectedProduct.brand),
+                    item_category: getName(selectedProduct.category),
+                    item_variant: getName(selectedProduct.color),
+                    price: itemPrice,
+                    quantity: 1,
+                  },
+                ],
+              },  
+            });
+          }
+        }
 
         toast.success(result.message || "Added to cart successfully!");
       } else {

@@ -68,8 +68,14 @@ export const getCart = async (req: Request, res: Response) => {
   try {
     const userId = req.params.userId;
 
-    const cart = await Cart.findOne({ user: userId }).populate("items.product");
-
+    const cart = await Cart.findOne({ user: userId }).populate({
+      path: "items.product",
+      populate: [
+        { path: "brand", select: "name" },
+        { path: "category", select: "name" },
+        { path: "color", select: "name" },
+      ],
+    });
     if (!cart) {
       return response(res, 200, "Cart is empty", { items: [] });
     }

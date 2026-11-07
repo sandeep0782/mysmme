@@ -613,7 +613,9 @@ export default async function CategoryDetailPage({
                 <div className="sticky top-24">
                   <Suspense fallback={<div className="min-h-[200px]" />}>
                     <CategoryFilters
-                      products={categoryProducts.filter((p) => p.slug && p.title)}
+                      products={categoryProducts.filter(
+                        (p) => p.slug && p.title,
+                      )}
                     />
                   </Suspense>
                 </div>

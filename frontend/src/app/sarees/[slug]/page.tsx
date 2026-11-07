@@ -3,7 +3,6 @@ import type { Metadata } from "next";
 
 import SareeDetailsClient from "./SareeDetailsClient";
 import type { SareeProduct } from "@/types/product";
-
 type ProductApiResponse = {
   success: boolean;
   message?: string;
@@ -19,19 +18,11 @@ async function getProduct(slug: string): Promise<SareeProduct | null> {
 
   const url = `${apiUrl}/products/slug/${encodeURIComponent(slug)}`;
 
-  console.log("[SAREE PAGE] slug:", slug);
-
-  console.log("[SAREE PAGE] API URL:", url);
-
   const res = await fetch(url, {
     cache: "no-store",
   });
 
-  console.log("[SAREE PAGE] API STATUS:", res.status);
-
   if (res.status === 404) {
-    console.log("[SAREE PAGE] PRODUCT NOT FOUND -> notFound()");
-
     return null;
   }
 
@@ -157,5 +148,10 @@ export default async function Page({
     notFound();
   }
 
-  return <SareeDetailsClient saree={saree} />;
+  return (
+    <>
+      {/* Existing Saree Product Details */}
+      <SareeDetailsClient saree={saree} />
+    </>
+  );
 }

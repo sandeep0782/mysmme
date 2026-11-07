@@ -6,7 +6,7 @@ import SareeCard from "./SareeCard";
 
 import { useEffect, useMemo, useState, useRef } from "react";
 import { useSearchParams } from "next/navigation";
-
+import { sendGTMEvent } from "@next/third-parties/google";
 interface SareeProductsProps {
   products: any[];
   isLoading: boolean;
@@ -317,6 +317,85 @@ const SareeProducts = ({
     (currentPage - 1) * sareePerPage,
     currentPage * sareePerPage,
   );
+
+  // =============================================
+  // GA4 - VIEW ITEM LIST TRACKING
+  // =============================================
+
+  const trackedListRef = useRef<string>("");
+
+  useEffect(() => {
+    if (isLoading || isError || paginatedSarees.length === 0) {
+      return;
+    }
+
+    const items = paginatedSarees.map((saree, index) => ({
+      item_id: String(saree._id),
+      item_name: String(saree.title ?? ""),
+      item_brand:
+        typeof saree.brand === "object"
+          ? (saree.brand?.name ?? "")
+          : (saree.brand ?? ""),
+      item_category:
+        typeof saree.category === "object"
+          ? (saree.category?.name ?? "")
+          : (saree.category ?? ""),
+      item_variant:
+        typeof saree.color === "object"
+          ? (saree.color?.name ?? "")
+          : (saree.color ?? ""),
+      price: Number(saree.finalPrice ?? 0),
+      quantity: 1,
+      index: (currentPage - 1) * sareePerPage + index,
+      item_list_id: "sarees_listing",
+      item_list_name: "Sarees Listing",
+    }));
+
+    const trackingKey = JSON.stringify({
+      page: currentPage,
+      items: items.map((item) => item.item_id),
+      filters: {
+        selectedBrands,
+        selectedColor,
+        selectedCategory,
+        selectedCollection,
+        selectedOccasion,
+        selectedDiscount,
+        searchTerm,
+        sortOption,
+      },
+    });
+
+    if (trackedListRef.current === trackingKey) {
+      return;
+    }
+
+    trackedListRef.current = trackingKey;
+
+    sendGTMEvent({ ecommerce: null });
+
+    sendGTMEvent({
+      event: "view_item_list",
+      ecommerce: {
+        item_list_id: "sarees_listing",
+        item_list_name: "Sarees Listing",
+        items,
+      },
+    });
+  }, [
+    paginatedSarees,
+    currentPage,
+    isLoading,
+    isError,
+    selectedBrands,
+    selectedColor,
+    selectedCategory,
+    selectedCollection,
+    selectedOccasion,
+    selectedDiscount,
+    searchTerm,
+    sortOption,
+  ]);
 
   // =========================
   // PAGE CHANGE
