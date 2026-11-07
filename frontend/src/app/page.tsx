@@ -295,7 +295,7 @@ export default function Home() {
                     </Link>
 
                     <Link
-                      href="/new-arrivals"
+                      href="/sarees"
                       className="rounded-full border border-gray-300 bg-white px-6 py-3 text-sm font-semibold text-gray-800 transition hover:border-gray-950"
                     >
                       View New Arrivals

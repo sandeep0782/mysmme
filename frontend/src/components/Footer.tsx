@@ -262,8 +262,6 @@ export default function Footer() {
             title="Customer Care"
             links={[
               ["Contact Us", "/contact"],
-              ["Shipping Information", "/shipping"],
-              ["Returns & Refunds", "/returns"],
               ["FAQ", "/faq"],
             ]}
           />
