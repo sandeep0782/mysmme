@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Brand from "@/components/Brand";
 import CategorySlider from "@/components/CategorySlider";
 import TrustFeatures from "@/components/TrustFeatures";
@@ -9,20 +10,34 @@ import ShopByOccasion from "@/components/ShopByOccasion";
 import Reels from "@/components/Reels";
 import Link from "next/link";
 
-export const metadata = {
-  title: "Buy Sarees Online in India | MYSMME Saree Marketplace",
-  description:
-    "Shop sarees online at MYSMME. Discover silk sarees, cotton sarees, georgette sarees, organza sarees, wedding sarees, designer sarees, daily wear sarees and sarees under ₹999.",
-  alternates: {
-    canonical: "https://mysmme.com",
-  },
+const homeTitle = "Buy Sarees Online in India | MYSMME Saree Marketplace";
+const homeDescription =
+  "Shop sarees online at MYSMME. Explore silk, cotton, georgette, organza and wedding sarees, plus styles under ₹999, from sellers across India.";
+const homeImage = {
+  url: "/og-image.jpg",
+  width: 1200,
+  height: 630,
+  alt: "MYSMME - India's Dedicated Saree Marketplace",
+};
+
+export const metadata: Metadata = {
+  title: { absolute: homeTitle },
+  description: homeDescription,
+  alternates: { canonical: "/" },
   openGraph: {
-    title: "Buy Sarees Online in India | MYSMME",
-    description:
-      "Discover elegant sarees for weddings, festivals, parties, office wear and everyday occasions at MYSMME.",
-    url: "https://mysmme.com",
-    siteName: "MYSMME",
     type: "website",
+    locale: "en_IN",
+    siteName: "MYSMME",
+    url: "/",
+    title: homeTitle,
+    description: homeDescription,
+    images: [homeImage],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: homeTitle,
+    description: homeDescription,
+    images: [homeImage.url],
   },
 };
 
