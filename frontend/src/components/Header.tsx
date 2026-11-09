@@ -58,7 +58,8 @@ export default function Header() {
     (state: RootState) => state.cart.items.length,
   );
 
-  const handleSearch = () => {
+  const handleSearch = (e?: React.FormEvent<HTMLFormElement>) => {
+    e?.preventDefault();
     const query = searchTerm.trim();
     if (!query) return;
     router.push(`/sarees?search=${encodeURIComponent(searchTerm)}`);
@@ -228,23 +229,29 @@ export default function Header() {
           />
         </Link>
         <div className="flex flex-1 items-center justify-center max-w-xl px-4">
-          <div className="relative w-full">
+          <form
+            onSubmit={handleSearch}
+            role="search"
+            className="relative w-full"
+          >
             <Input
-              type="text"
+              type="search"
               placeholder="Search sarees, designs, fabrics, brands..."
-              className="w-full rounded-xs border py-5 border-gray-100 bg-gray-100 pr-10 focus:border-gray-100 focus:bg-transparent focus:outline-none focus:ring-0 focus:ring-offset-0 focus-visible:border-gray-100 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
+              className="w-full rounded-xs border py-5 border-gray-100 bg-gray-100 focus:bg-white"
+              value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
+
             <Button
+              type="submit"
               size="icon"
               variant="ghost"
               aria-label="Search"
-              className="absolute right-0 top-1/2 -translate-y-1/2 hover:bg-red-50 focus:bg-red-50 focus-visible:bg-red-50 focus-visible:ring-red-200 cursor-pointer"
-              onClick={handleSearch}
+              className="absolute right-0 top-1/2 -translate-y-1/2 cursor-pointer"
             >
-              <Search className="h-5 w-5 text-red-600" aria-hidden="true" />
+              {/* <Search className="h-5 w-5 text-red-600" /> */}
             </Button>
-          </div>
+          </form>
         </div>
         <div className="flex items-center gap-1 ">
           <DropdownMenu open={isDropdownOpen} onOpenChange={setIsDropdownOpen}>
@@ -345,24 +352,29 @@ export default function Header() {
           />
         </Link>
         <div className="flex-1 px-4">
-          <div className="relative w-full">
+          <form
+            onSubmit={handleSearch}
+            role="search"
+            className="relative w-full"
+          >
             <Input
-              type="text"
+              type="search"
               placeholder="Search..."
-              className="w-full pr-10"
+              className=" w-full rounded-xs border py-2 border-gray-100 bg-gray-100 pr-10 focus:bg-white"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
+
             <Button
+              type="submit"
               size="icon"
               variant="ghost"
               aria-label="Search"
               className="absolute right-0 top-1/2 -translate-y-1/2"
-              onClick={handleSearch}
             >
-              <Search className="h-5 w-5" aria-hidden="true" />
+              <Search className="h-5 w-5 text-red-600" />
             </Button>
-          </div>
+          </form>
         </div>
         <Link
           href="/checkout/cart"
