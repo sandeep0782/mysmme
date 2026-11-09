@@ -274,6 +274,7 @@ export default function Footer() {
             title="MYSMME"
             links={[
               ["About MYSMME", "/about-us"],
+              ["Saree Styling Journal", "/blogs"],
               ["Featured Brands", "/brands"],
               ["Careers", "/careers"],
               ["Become a Partner", "/partners"],
