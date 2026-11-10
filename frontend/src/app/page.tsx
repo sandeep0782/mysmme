@@ -165,12 +165,12 @@ export default function Home() {
                 The MYSMME Saree Experience
               </span>
 
-              <h1 className="mt-6 text-3xl font-semibold tracking-tight text-gray-950 sm:text-4xl md:text-5xl">
-                Discover Sarees Designed for
+              <h2 className="mt-6 text-3xl font-semibold tracking-tight text-gray-950 sm:text-4xl md:text-5xl">
+                Discover Sarees Designed for{" "}
                 <span className="block bg-gradient-to-r from-rose-700 via-pink-600 to-amber-600 bg-clip-text text-transparent">
                   Every Woman, Every Occasion
                 </span>
-              </h1>
+              </h2>
 
               <p className="mx-auto mt-6 max-w-3xl text-base leading-8 text-gray-600 md:text-lg">
                 MYSMME is an online saree marketplace created to make
