@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import type { Metadata } from "next";
 const sections = [
   { id: "information", number: "01", title: "Information We Collect" },
   { id: "usage", number: "02", title: "How We Use Information" },
@@ -26,6 +27,18 @@ const sections = [
   { id: "changes", number: "08", title: "Changes to This Policy" },
   { id: "contact", number: "09", title: "Contact Us" },
 ];
+
+export const metadata: Metadata = {
+  title: {
+    absolute: "Privacy Policy | MYSMME",
+  },
+  description:
+    "Read the MYSMME Privacy Policy to understand how we collect, use, store and protect personal information on our saree marketplace.",
+  alternates: {
+    canonical: "https://mysmme.com/privacy-policy",
+  },
+};
+
 export default function PrivacyPage() {
   return (
     <main className="min-h-screen bg-[#fffdf9] text-[#241b18]">

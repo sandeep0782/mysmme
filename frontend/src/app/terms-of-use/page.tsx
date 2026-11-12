@@ -1,4 +1,6 @@
 import Link from "next/link";
+import type { Metadata } from "next";
+
 import {
   ArrowRight,
   FileText,
@@ -16,6 +18,17 @@ import {
 
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+
+export const metadata: Metadata = {
+  title: {
+    absolute: "Terms of Use | MYSMME",
+  },
+  description:
+    "Read the MYSMME Terms of Use, including the terms and conditions for using our online saree marketplace.",
+  alternates: {
+    canonical: "https://mysmme.com/terms-of-use",
+  },
+};
 
 export default function TermsPage() {
   return (
