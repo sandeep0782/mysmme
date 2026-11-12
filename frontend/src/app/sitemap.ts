@@ -4,15 +4,16 @@ export const dynamic = "force-dynamic";
 
 const SITE_URL = (
   process.env.NEXT_PUBLIC_SITE_URL || "https://mysmme.com"
-).replace(/\/$/, "");
+).replace(/\/+$/, "");
 
 const API_URL = (
   process.env.NEXT_PUBLIC_API_URL || "https://api.mysmme.com/api"
-).replace(/\/$/, "");
+).replace(/\/+$/, "");
 
 type Product = {
   slug?: string;
   updatedAt?: string;
+  createdAt?: string;
 };
 
 type Category = {
@@ -23,6 +24,7 @@ type Category = {
   image?: string;
   isActive: boolean;
   updatedAt?: string;
+  createdAt?: string;
 };
 
 type ProductsApiResponse = {
@@ -35,6 +37,22 @@ type CategoriesApiResponse = {
   message?: string;
   data?: Category[];
 };
+
+function validDate(value?: string | null): Date | undefined {
+  if (!value) return undefined;
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return undefined;
+  }
+
+  if (date.getTime() > Date.now()) {
+    return undefined;
+  }
+
+  return date;
+}
 
 async function fetchProducts(): Promise<Product[]> {
   try {
@@ -91,6 +109,7 @@ async function fetchCategories(): Promise<Category[]> {
 type Blog = {
   slug?: string;
   updatedAt?: string;
+  createdAt?: string;
   publishedAt?: string | null;
 };
 
@@ -130,16 +149,34 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     fetchBlogs(),
   ]);
 
-  const now = new Date();
-
   const activeCategories = categories.filter(
     (category) => category.isActive && category.slug && category.name?.trim(),
   );
 
   console.log("[SITEMAP] API URL:", API_URL);
-  console.log("[SITEMAP] Products:", products.length);
-  console.log("[SITEMAP] Categories:", activeCategories.length);
 
+  console.log("[SITEMAP] Products:", products.length);
+  console.log(
+    "[SITEMAP] Products with slug:",
+    products.filter((product) => product.slug).length,
+  );
+
+  console.log("[SITEMAP] Categories:", categories.length);
+  console.log("[SITEMAP] Active categories:", activeCategories.length);
+
+  console.log("[SITEMAP] Blogs:", blogs.length);
+  console.log(
+    "[SITEMAP] Blogs with slug:",
+    blogs.filter((blog) => blog.slug).length,
+  );
+
+  console.log(
+    "[SITEMAP] Total expected URLs:",
+    12 +
+      products.filter((product) => product.slug).length +
+      activeCategories.length +
+      blogs.filter((blog) => blog.slug).length,
+  );
   return [
     // ============================================================
     // MAIN PAGES
@@ -147,14 +184,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     {
       url: SITE_URL,
-      lastModified: now,
       changeFrequency: "daily",
       priority: 1,
     },
 
     {
       url: `${SITE_URL}/sarees`,
-      lastModified: now,
       changeFrequency: "daily",
       priority: 0.9,
     },
@@ -165,7 +200,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     {
       url: `${SITE_URL}/category`,
-      lastModified: now,
       changeFrequency: "weekly",
       priority: 0.9,
     },
@@ -176,56 +210,48 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     {
       url: `${SITE_URL}/brands`,
-      lastModified: now,
       changeFrequency: "weekly",
       priority: 0.8,
     },
 
     {
       url: `${SITE_URL}/about-us`,
-      lastModified: now,
       changeFrequency: "monthly",
       priority: 0.7,
     },
 
     {
       url: `${SITE_URL}/how-it-works`,
-      lastModified: now,
       changeFrequency: "monthly",
       priority: 0.7,
     },
 
     {
       url: `${SITE_URL}/faq`,
-      lastModified: now,
       changeFrequency: "monthly",
       priority: 0.6,
     },
 
     {
       url: `${SITE_URL}/privacy-policy`,
-      lastModified: now,
       changeFrequency: "yearly",
       priority: 0.3,
     },
 
     {
       url: `${SITE_URL}/terms-of-use`,
-      lastModified: now,
       changeFrequency: "yearly",
       priority: 0.3,
     },
 
     {
       url: `${SITE_URL}/careers`,
-      lastModified: now,
       changeFrequency: "yearly",
       priority: 0.3,
     },
 
     {
       url: `${SITE_URL}/partners`,
-      lastModified: now,
       changeFrequency: "yearly",
       priority: 0.3,
     },
@@ -236,7 +262,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     {
       url: `${SITE_URL}/blogs`,
-      lastModified: now,
       changeFrequency: "weekly",
       priority: 0.7,
     },
@@ -245,11 +270,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       .filter((blog) => blog.slug)
       .map((blog) => ({
         url: `${SITE_URL}/blogs/${encodeURIComponent(blog.slug!)}`,
-        lastModified: blog.updatedAt
-          ? new Date(blog.updatedAt)
-          : blog.publishedAt
-            ? new Date(blog.publishedAt)
-            : now,
+        lastModified:
+          validDate(blog.updatedAt) ??
+          validDate(blog.publishedAt) ??
+          validDate(blog.createdAt),
         changeFrequency: "monthly" as const,
         priority: 0.7,
       })),
@@ -260,7 +284,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     ...activeCategories.map((category) => ({
       url: `${SITE_URL}/category/${encodeURIComponent(category.slug!)}`,
-      lastModified: category.updatedAt ? new Date(category.updatedAt) : now,
+      lastModified:
+        validDate(category.updatedAt) ?? validDate(category.createdAt),
       changeFrequency: "weekly" as const,
       priority: 0.8,
     })),
@@ -273,7 +298,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       .filter((product) => product.slug)
       .map((product) => ({
         url: `${SITE_URL}/sarees/${encodeURIComponent(product.slug!)}`,
-        lastModified: product.updatedAt ? new Date(product.updatedAt) : now,
+        lastModified:
+          validDate(product.updatedAt) ?? validDate(product.createdAt),
         changeFrequency: "weekly" as const,
         priority: 0.8,
       })),
