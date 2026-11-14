@@ -16,26 +16,29 @@ import {
 
 import Footer from "@/components/Footer";
 
-const title = "About Us";
-const fullTitle = "About MYSMME | Indian Saree & Fashion Marketplace";
+const title = "About MYSMME | India's Online Saree Marketplace";
+
 const description =
-  "MYSMME is an Indian fashion marketplace connecting customers with saree sellers, boutiques, and designers. Learn our story and why we built a dedicated saree marketplace.";
+  "Discover MYSMME, India's online saree marketplace connecting shoppers with saree sellers. Learn about our mission, collections and shopping experience.";
 
 export const metadata: Metadata = {
-  title,
+  title: {
+    absolute: title,
+  },
   description,
   alternates: {
-    canonical: "/about-us",
+    canonical: "https://mysmme.com/about-us",
   },
   openGraph: {
-    title: fullTitle,
+    title,
     description,
-    url: "/about-us",
+    url: "https://mysmme.com/about-us",
+    siteName: "MYSMME",
     type: "website",
   },
   twitter: {
-    card: "summary_large_image",
-    title: fullTitle,
+    card: "summary",
+    title,
     description,
   },
 };
