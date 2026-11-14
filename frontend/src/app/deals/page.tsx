@@ -1,6 +1,14 @@
 import Link from "next/link";
 
 import { ArrowRight, BadgePercent, Sparkles } from "lucide-react";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Saree Deals & Offers",
+  description:
+    "Shop saree deals and offers on MYSMME, including sarees under ₹999 from sellers across India.",
+  alternates: { canonical: "/deals" },
+};
 
 export default function DealsPage() {
   return (

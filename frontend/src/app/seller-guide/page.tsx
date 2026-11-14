@@ -14,7 +14,14 @@ import {
   Store,
   Truck,
 } from "lucide-react";
+import type { Metadata } from "next";
 
+export const metadata: Metadata = {
+  title: "Seller Guide: How to Sell Sarees Online",
+  description:
+    "Learn how to register, list your sarees and start selling to customers across India on MYSMME.",
+  alternates: { canonical: "/seller-guide" },
+};
 /* ================================================================
    SELLER GUIDE PAGE
 ================================================================ */
