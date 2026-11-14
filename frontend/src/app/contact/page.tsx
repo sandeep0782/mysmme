@@ -26,7 +26,7 @@ import ContactForm from "@/components/contact/ContactForm";
    SEO
 ================================================================ */
 
-const title = "Contact Us";
+const title = "Contact Us | Customer & Seller Support | MYSMME";
 
 const fullTitle = "Contact MYSMME | Customer, Seller & Business Support";
 

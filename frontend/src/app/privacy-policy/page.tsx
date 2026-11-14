@@ -30,7 +30,7 @@ const sections = [
 
 export const metadata: Metadata = {
   title: {
-    absolute: "Privacy Policy | MYSMME",
+    absolute: "Privacy Policy | How We Handle Your Data | MYSMME",
   },
   description:
     "Read the MYSMME Privacy Policy to understand how we collect, use, store and protect personal information on our saree marketplace.",

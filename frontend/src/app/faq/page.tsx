@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import FAQClient from "./FAQClient";
 import { FAQS } from "./faq-data";
 
-const title = "FAQ";
-const fullTitle = "FAQ | MYSMME";
+const title = "FAQ | Shopping & Selling Help | MYSMME";
+const fullTitle = "FAQ | Shopping & Selling Help | MYSMME";
 const description =
   "Answers about MYSMME — how our saree marketplace works, shipping, returns, and how MYSMME differs from the Government MSME scheme.";
 

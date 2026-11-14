@@ -4,7 +4,7 @@ import { ArrowRight, BadgePercent, Sparkles } from "lucide-react";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Saree Deals & Offers",
+  title: "Saree Deals & Offers Online | MYSMME",
   description:
     "Shop saree deals and offers on MYSMME, including sarees under ₹999 from sellers across India.",
   alternates: { canonical: "/deals" },

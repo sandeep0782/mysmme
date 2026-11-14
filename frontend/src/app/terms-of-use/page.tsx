@@ -21,7 +21,7 @@ import Footer from "@/components/Footer";
 
 export const metadata: Metadata = {
   title: {
-    absolute: "Terms of Use | MYSMME",
+    absolute: "Terms of Use | Rules for Shoppers & Sellers | MYSMME",
   },
   description:
     "Read the MYSMME Terms of Use, including the terms and conditions for using our online saree marketplace.",
