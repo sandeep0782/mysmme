@@ -60,10 +60,9 @@ async function fetchCategories(): Promise<Category[]> {
 ============================================================ */
 
 const title = "Saree Categories";
-const fullTitle = "Saree Categories | Shop Sarees by Style, Fabric & Tradition";
+const fullTitle = "Shop Sarees by Style, Fabric & Tradition | MYSMME";
 const description =
-  "Explore saree categories at MYSMME. Discover beautiful silk, traditional, designer and contemporary sarees by style, fabric and tradition for weddings, festivals and everyday wear.";
-
+  "Explore saree categories at MYSMME. Shop silk, cotton, Banarasi, designer and traditional sarees for weddings, festivals and everyday wear.";
 export const metadata: Metadata = {
   title: fullTitle,
   description,

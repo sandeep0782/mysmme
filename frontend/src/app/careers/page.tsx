@@ -22,9 +22,10 @@ import {
 ================================================================ */
 
 export const metadata: Metadata = {
-  title: "Careers at MYSMME | Join India's Dedicated Saree Marketplace",
+  title: "Careers | Join Our Saree Marketplace Team | MYSMME",
+
   description:
-    "Explore career and freelance opportunities at MYSMME. Join us in technology, marketing, design, content and growth as we build India's dedicated saree marketplace.",
+    "Explore careers and freelance opportunities at MYSMME in technology, marketing, design and content. Help grow India's dedicated saree marketplace",
   alternates: {
     canonical: "/careers",
   },

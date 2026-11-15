@@ -40,7 +40,7 @@ const cookieSections = [
     icon: Cookie,
     title: "What Are Cookies?",
     description:
-      "Cookies are small text files stored on your device when you visit a website. They help websites function correctly, remember preferences, and improve the browsing experience.",
+      "Learn how MYSMME uses cookies for site functionality, preferences, analytics and marketing. Review our Cookie Policy and manage your consent.",
   },
   {
     icon: ShieldCheck,

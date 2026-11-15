@@ -30,9 +30,9 @@ import {
 ================================================================ */
 
 export const metadata: Metadata = {
-  title: "Partner with MYSMME | India's Dedicated Saree Marketplace",
+  title: "Partner with MYSMME | Sell Sarees Online",
   description:
-    "Partner with MYSMME, India's dedicated saree marketplace. Explore opportunities for creators, affiliates, seller growth partners, technology providers, service companies, brands and strategic partners.",
+    "Partner with MYSMME, India's saree marketplace. Explore opportunities for creators, affiliates, brands, service providers and seller growth partners.",
   alternates: {
     canonical: "/partners",
   },
