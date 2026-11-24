@@ -116,34 +116,11 @@ const Page = () => {
   return (
     <div className="min-h-screen bg-white">
       <div className="mx-auto px-4 py-4">
-        {/* =====================================================
-            BREADCRUMB
-        ===================================================== */}
-        <nav className="mb-4 flex items-center gap-2 text-sm text-muted-foreground">
-          <Link href="/" className="text-primary hover:underline">
-            Home
-          </Link>
-
-          <span>/</span>
-
-          <span>Sarees</span>
-        </nav>
 
         {/* =====================================================
             HEADING + DESKTOP SORT
         ===================================================== */}
-        <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <h1 className="text-2xl font-bold leading-tight text-gray-900 md:text-3xl">
-              Buy Sarees Online in India
-            </h1>
-
-            <p className="mt-2 text-sm text-muted-foreground md:text-base">
-              Explore silk, cotton, Banarasi, designer and wedding sarees at
-              MYSMME. Discover beautiful styles for every occasion.
-            </p>
-          </div>
-
+        <div className="mb-6 flex justify-end">
           {/* DESKTOP SORT */}
           <div className="hidden md:block lg:shrink-0">
             <Select value={sortOption} onValueChange={setSortOption}>

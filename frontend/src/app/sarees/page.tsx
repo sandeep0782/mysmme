@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import SareesPageClient from "./SareesPageClient";
-
+import Link from "next/link";
 export const metadata: Metadata = {
   title: "Buy Sarees Online in India",
 
@@ -24,9 +24,23 @@ export const metadata: Metadata = {
 export default function Page() {
   return (
     <>
-      {/* Server-rendered SEO heading */}
-      <section className="mx-auto max-w-7xl px-4 pt-6 pb-4">
-        <h1 className="text-2xl font-bold text-gray-900 md:text-3xl">
+      <section className="mx-auto px-4 pt-4">
+        {/* Breadcrumb */}
+        <nav
+          aria-label="Breadcrumb"
+          className="mb-4 flex items-center gap-2 text-sm text-muted-foreground"
+        >
+          <Link href="/" className="text-primary hover:underline">
+            Home
+          </Link>
+
+          <span aria-hidden="true">/</span>
+
+          <span aria-current="page">Sarees</span>
+        </nav>
+
+        {/* SEO H1 */}
+        <h1 className="text-2xl font-bold text-gray-900 md:text-2xl">
           Buy Sarees Online in India
         </h1>
 
@@ -35,6 +49,7 @@ export default function Page() {
           Find beautiful styles for every occasion.
         </p>
       </section>
+
       <Suspense fallback={<div className="min-h-[60vh]" />}>
         <SareesPageClient />
       </Suspense>
